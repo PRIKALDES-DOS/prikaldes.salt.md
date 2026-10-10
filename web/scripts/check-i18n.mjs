@@ -10,8 +10,9 @@
 // build is the only version of "we'll remember" that works.
 //
 // Both sections are enforced. Section 2 became enforceable the moment the last
-// string was wrapped: from here on, a bare string or a stale catalog fails the
-// build, so rot is mechanically impossible rather than merely discouraged.
+// string was wrapped: from here on, a bare string or a stale German catalog
+// fails the build, so rot is mechanically impossible rather than merely
+// discouraged. Other languages are reported, not enforced (see REQUIRED).
 
 import { existsSync, readdirSync, readFileSync, statSync } from 'node:fs';
 import { join, relative, dirname } from 'node:path';
@@ -378,6 +379,15 @@ if (process.argv.includes('--german')) {
 
 // Catalogs: an entry nobody asks for any more is an orphan (usually the source
 // text was edited); a source string with no entry is simply untranslated.
+//
+// Only the catalogs in REQUIRED fail the build. German is the one this project
+// answers for: somebody here reads it, and a gap in it is a bug. Every other
+// language is a contribution and may lag behind, because a missing entry shows
+// its English source, which t() does anyway. Enforcing them all would make
+// whoever renames a button deliver Spanish, and French, and whatever arrives
+// next, which is the surest way to stop people contributing. They are topped up
+// before a release instead: node scripts/translate.mjs <locale>.
+const REQUIRED = new Set(['de.json']);
 const localeDir = join(src, 'locales');
 const report = [];
 for (const name of readdirSync(localeDir).filter((f) => f.endsWith('.json'))) {
@@ -459,7 +469,10 @@ else {
 }
 
 console.log();
-const stale = report.filter((r) => r.missing > 0 || r.orphans.length > 0);
+const behind = (r) => r.missing > 0 || r.orphans.length > 0;
+const stale = report.filter((r) => REQUIRED.has(r.name) && behind(r));
+for (const r of report.filter((r) => !REQUIRED.has(r.name) && behind(r)))
+  console.log(`  note — ${r.name} is behind (${r.missing} untranslated, ${r.orphans.length} orphaned); missing entries show in English`);
 if (errors.length || unwrapped > 0 || stale.length || germanLines.length || germanStrings.length) {
   if (errors.length) console.log(`  FAILED — ${errors.length} formatting violation(s)`);
   if (unwrapped > 0)
@@ -475,4 +488,4 @@ if (errors.length || unwrapped > 0 || stale.length || germanLines.length || germ
   console.log('  For the German list: node scripts/check-i18n.mjs --german');
   process.exit(1);
 }
-console.log('  ok — every string wrapped, every catalog current, source is English');
+console.log('  ok — every string wrapped, the German catalog current, source is English');
