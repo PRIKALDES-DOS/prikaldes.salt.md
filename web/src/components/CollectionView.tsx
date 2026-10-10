@@ -542,7 +542,7 @@ export default function CollectionView({ collectionId, pages, tagColors, onNavig
   const emptyLabel =
     rows.length > 0 && viewRows.length === 0
       ? t('No rows match the current filter.')
-      : t('No rows yet — click ＋ New above.');
+      : t('No rows yet. Click ＋ New above.');
   const tabIcon = (t: ViewDef['type']) => {
     const sz = 14;
     if (t === 'board') return <Columns3 size={sz} />;
@@ -669,7 +669,7 @@ export default function CollectionView({ collectionId, pages, tagColors, onNavig
               value={view.dateProp ?? ''}
               onChange={(e) => updateView({ dateProp: e.target.value || undefined })}
             >
-              <option value="">{t('Start: —')}</option>
+              <option value="">{t('Start: (none)')}</option>
               {dateProps.map((p) => (
                 <option key={p.id} value={p.id}>
                   {t('Start:')} {p.name}
@@ -1029,7 +1029,7 @@ function FormView({
         <textarea
           className="form-desc"
           value={view.formDesc ?? ''}
-          placeholder={t('Description (optional) — explains what the form is for.')}
+          placeholder={t('Description (optional): explains what the form is for.')}
           rows={2}
           onChange={(e) => onUpdateView({ formDesc: e.target.value })}
         />
@@ -1406,7 +1406,7 @@ function FilterSortControls({
                     )}
                   </div>
                 )}
-                {!filterIsArmed(f) && <div className="fs-hint">{t('Not filtering yet — pick a value.')}</div>}
+                {!filterIsArmed(f) && <div className="fs-hint">{t('Not filtering yet. Pick a value.')}</div>}
               </div>
             );
           })}

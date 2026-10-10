@@ -67,7 +67,7 @@ func (s *Server) handleAdminBackup(w http.ResponseWriter, r *http.Request) {
 	// laborious route to
 	// denselben Daten.
 	if !s.isOwner(requestUser(r).ID) {
-		httpErrorCode(w, 403, "owner_only_backup", "Only the owner can download an instance backup — it contains every workspace.")
+		httpErrorCode(w, 403, "owner_only_backup", "Only the owner can download an instance backup. It contains every workspace.")
 		return
 	}
 	tmp, err := os.CreateTemp("", "salt-backup-*.tar.gz")

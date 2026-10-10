@@ -1257,7 +1257,7 @@ export default function Sidebar({
         throw new Error(err?.error || t('Import failed (HTTP {status})', { status: res.status }));
       }
       const out = (await res.json()) as { workspaceId: string; name: string; pages: number };
-      toast(t('Imported “{name}” — {pages}', { name: out.name, pages: plural(out.pages, '{n} page', '{n} pages') }));
+      toast(t('Imported “{name}” ({pages})', { name: out.name, pages: plural(out.pages, '{n} page', '{n} pages') }));
       onWorkspacesChanged();
       onSwitchWorkspace(out.workspaceId);
     } catch (err) {
@@ -1330,7 +1330,7 @@ export default function Sidebar({
           />
         </div>
         <div className="sidebar-header-actions">
-          <button className="icon-btn" title={t('Library — every page')} onClick={onOpenIndex}>
+          <button className="icon-btn" title={t('Library (every page)')} onClick={onOpenIndex}>
             <Library size={17} />
           </button>
           {collapsed ? (

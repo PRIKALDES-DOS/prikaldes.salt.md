@@ -16,7 +16,7 @@ func sharePasswordForm(token string, wrong bool) string {
 	if wrong {
 		msg = `<p style="color:#c4554d">Wrong password.</p>`
 	}
-	return `<!doctype html><html><head><meta charset="utf-8"><meta name="viewport" content="width=device-width,initial-scale=1"><title>salt.md — protected page</title><style>` + htmlDocStyle + `</style></head><body>` +
+	return `<!doctype html><html><head><meta charset="utf-8"><meta name="viewport" content="width=device-width,initial-scale=1"><title>salt.md: protected page</title><style>` + htmlDocStyle + `</style></head><body>` +
 		`<h1>🔒 Protected page</h1><p>This page is protected by a password.</p>` + msg +
 		`<form method="post" action="/public/` + html.EscapeString(token) + `">` +
 		`<input type="password" name="pw" placeholder="Password" autofocus style="padding:9px 11px;border:1px solid #ddd;border-radius:8px;font-size:15px"> ` +

@@ -519,7 +519,7 @@ func (s *Server) handleMCP(w http.ResponseWriter, r *http.Request) {
 	maxBody := s.maxUploadBytes()/3*4 + 1<<20
 	if r.ContentLength > maxBody {
 		rpcError(w, nil, -32600, fmt.Sprintf(
-			"request is %d MB — the limit is %d MB; for a file this size use the HTTP upload at /api/upload",
+			"request is %d MB. The limit is %d MB; for a file this size use the HTTP upload at /api/upload",
 			r.ContentLength>>20, maxBody>>20))
 		return
 	}
@@ -607,7 +607,7 @@ func (s *Server) handleMCP(w http.ResponseWriter, r *http.Request) {
 		}
 		// Stop a runaway agent from hammering the sync layer.
 		if !s.mcpRate.allow(u.ID) {
-			rpcResult(w, req.ID, textResult("rate limit exceeded — too many requests, slow down", true))
+			rpcResult(w, req.ID, textResult("rate limit exceeded: too many requests, slow down", true))
 			return
 		}
 		result, err := s.mcpCall(u, params.Name, params.Arguments, s.publicShareBase(r))
@@ -1063,7 +1063,7 @@ func (s *Server) mcpCall(u *user, name string, rawArgs json.RawMessage, publicBa
 			// away. Same reasoning as the Content-Length check above, one
 			// layer further in.
 			if size := int64(len(args.DataBase64)) / 4 * 3; size > s.maxUploadBytes() {
-				return "", fmt.Errorf("file is %d MB — the limit is %d MB; upload it through the browser (/api/upload) or raise max_upload_mb in the settings",
+				return "", fmt.Errorf("file is %d MB. The limit is %d MB; upload it through the browser (/api/upload) or raise max_upload_mb in the settings",
 					size>>20, s.maxUploadBytes()>>20)
 			}
 			data, err := base64.StdEncoding.DecodeString(args.DataBase64)

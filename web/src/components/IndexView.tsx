@@ -400,7 +400,7 @@ export default function IndexView({
           <p className="dialog-hint idx-tree-hint">
             {t('This is how an agent reads the structure of your workspace, the same way')}{' '}
             <code>list_pages</code> {t('does over MCP.')}{' '}
-            {t('Every row carries a stable Markdown link — copy')} <code>md</code>{' '}
+            {t('Every row carries a stable Markdown link. Copy')} <code>md</code>{' '}
             {t('and it stays searchable Markdown, wherever it lives.')}
           </p>
           <div className="idx-tree">

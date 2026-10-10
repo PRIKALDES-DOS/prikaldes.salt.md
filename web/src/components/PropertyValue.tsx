@@ -244,7 +244,7 @@ function SelectCell({
                     </button>
                   )}
                   {filtered.length === 0 && !query && (
-                    <div className="select-empty">{t('No options — type to create one.')}</div>
+                    <div className="select-empty">{t('No options. Type to create one.')}</div>
                   )}
                 </div>
               </>

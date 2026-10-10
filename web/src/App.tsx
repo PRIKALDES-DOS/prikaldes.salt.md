@@ -339,7 +339,7 @@ export default function App() {
         // here too, one frame later (W112).
         if (m.authenticated && m.prefs) void applyPrefs(m.prefs);
         if (m.version && m.version !== BUILD_VERSION) {
-          toast(t('A new version is available — reload the page'));
+          toast(t('A new version is available: reload the page'));
         }
         if (m.authenticated) void loadAll();
       })
@@ -623,7 +623,7 @@ export default function App() {
         };
         if (msg.type === 'hello' && msg.version && msg.version !== BUILD_VERSION && !warnedVersion) {
           warnedVersion = true;
-          toast(t('A new version is available — reload the page'));
+          toast(t('A new version is available: reload the page'));
         }
         if (msg.type === 'pages') {
           window.clearTimeout(reloadTimer.current);
@@ -1226,7 +1226,7 @@ export default function App() {
             <h2>{t('No workspace')}</h2>
             <p>
               {t(
-                'Your account currently belongs to no workspace. Ask an admin for access — or create one of your own, if this instance allows it.',
+                'Your account currently belongs to no workspace. Ask an admin for access, or create one of your own, if this instance allows it.',
               )}
             </p>
             {me?.allowUserWorkspaces && (
@@ -1261,7 +1261,7 @@ export default function App() {
             </button>
             <div className="empty-emoji"><Logo size={52} /></div>
             <h2>{t('No pages yet')}</h2>
-            <p>{t('Create your first page — or import from Notion (.zip) / Markdown (.md).')}</p>
+            <p>{t('Create your first page, or import from Notion (.zip) / Markdown (.md).')}</p>
             <div className="empty-actions">
               <button className="btn primary" onClick={() => void createPage(null)}>
                 {t('New page')}
@@ -1316,7 +1316,7 @@ export default function App() {
           }}
         >
           <WifiOff size={13} />
-          {t('Not receiving live updates — reconnect')}
+          {t('Not receiving live updates: reconnect')}
         </button>
       )}
       {toaster}

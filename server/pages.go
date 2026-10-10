@@ -1148,7 +1148,7 @@ func (s *Server) handleUpload(w http.ResponseWriter, r *http.Request) {
 		// can show a precise message.
 		var tooLarge *http.MaxBytesError
 		if errors.As(err, &tooLarge) || strings.Contains(err.Error(), "too large") {
-			httpError(w, http.StatusRequestEntityTooLarge, fmt.Sprintf("file too large — max %d MB", maxUploadSize>>20))
+			httpError(w, http.StatusRequestEntityTooLarge, fmt.Sprintf("file too large: max %d MB", maxUploadSize>>20))
 		} else {
 			httpError(w, 400, "upload malformed")
 		}

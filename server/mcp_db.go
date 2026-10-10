@@ -128,7 +128,7 @@ func (s *Server) mcpSetProperties(pageID string, properties json.RawMessage, act
 		if blob, err := json.Marshal(diff); err == nil {
 			s.auditChanges("agent", actor.ID, actor.Name+" (MCP)", "set_properties", pageID,
 				s.pageWorkspace(pageID),
-				fmt.Sprintf("%s — %s", title, strings.Join(changed, ", ")), string(blob))
+				fmt.Sprintf("%s: %s", title, strings.Join(changed, ", ")), string(blob))
 		}
 	}
 	return fmt.Sprintf("Set %d propert%s on row %s", len(changed), plural(len(changed), "y", "ies"), pageID), nil

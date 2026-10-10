@@ -846,7 +846,7 @@ function PageHeader({
           </button>
           <button
             className={'icon-btn topbar-wide-only' + (visibility === 'private' ? ' active-star' : '')}
-            title={visibility === 'private' ? t('Private (only you) — click to share with the workspace') : t('Visible to the workspace — click to make it private')}
+            title={visibility === 'private' ? t('Private (only you): click to share with the workspace') : t('Visible to the workspace: click to make it private')}
             onClick={togglePrivate}
           >
             {visibility === 'private' ? <Lock size={17} /> : <LockOpen size={17} />}
