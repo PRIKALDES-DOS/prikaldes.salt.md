@@ -58,7 +58,7 @@ func (s *Server) handlePublicView(w http.ResponseWriter, r *http.Request) {
 	if p.Type == "collection" {
 		// A database renders as its Markdown table inside <pre> — faithful and
 		// dependency-free. (Rows only; never children pages.)
-		md, err := s.collectionMarkdown(p)
+		md, err := s.collectionMarkdown(p, "")
 		if err != nil {
 			httpError(w, 500, err.Error())
 			return

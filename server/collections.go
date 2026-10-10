@@ -152,26 +152,39 @@ func isNumeric(s string) bool {
 	return err == nil
 }
 
+// privateRowRule is the SQL condition that keeps other people's private rows
+// out of everything that reads a collection's rows. The visibility switch in
+// the page header applies to database rows too. The row list honoured it first;
+// the Markdown export, get_page over MCP, the calendar feed and a publicly
+// shared collection went on reading every row, so a row hidden in the app was
+// readable four other ways. Every reader of rows goes through this now.
+//
+// userID "" is somebody without an account, reading a shared link: no private
+// row at all, whoever owns it. Workspace admins still see everything, the same
+// rule as in forbiddenPrivateAncestor.
+func (s *Server) privateRowRule(userID, colID string) (string, []any) {
+	if userID == "" {
+		return "visibility != 'private'", nil
+	}
+	wsAdmin := 0
+	if s.isWorkspaceAdmin(userID, s.pageWorkspace(colID)) {
+		wsAdmin = 1
+	}
+	return "(? = 1 OR visibility != 'private' OR owner_id = ?)", []any{wsAdmin, userID}
+}
+
 // collectionRowsQuery filters, sorts and paginates a collection's rows in
 // SQLite and injects computed (rollup/formula/relation) values. Shared by the
 // REST handler and the MCP query_rows tool so both behave identically.
 func (s *Server) collectionRowsQuery(u *user, colID string, filters []rowFilter, sortParam string, limit, offset int) (list []map[string]any, total int, err error) {
 	where := []string{"parent_id = ?", "trashed_at IS NULL"}
 	args := []any{colID}
-	// Hide other people's private rows. The visibility switch in the page header
-	// applies to database rows too, but this query never honoured it: through the
-	// row list every workspace member read titles and properties of ALL rows,
-	// including the ones marked private.
-	//
-	// The condition belongs in the SQL, not behind the LIMIT: filtering afterwards
-	// would falsify paging and the total count. Workspace admins still see
-	// everything — the same rule as in forbiddenPrivateAncestor.
-	wsAdmin := 0
-	if s.isWorkspaceAdmin(u.ID, s.pageWorkspace(colID)) {
-		wsAdmin = 1
-	}
-	where = append(where, "(? = 1 OR visibility != 'private' OR owner_id = ?)")
-	args = append(args, wsAdmin, u.ID)
+	// Other people's private rows stay out. The condition belongs in the SQL,
+	// not behind the LIMIT: filtering afterwards would falsify paging and the
+	// total count.
+	rule, ruleArgs := s.privateRowRule(u.ID, colID)
+	where = append(where, rule)
+	args = append(args, ruleArgs...)
 	for _, f := range filters {
 		if !safePropID(f.Prop) {
 			continue
