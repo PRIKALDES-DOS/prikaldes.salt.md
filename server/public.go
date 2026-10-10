@@ -67,5 +67,22 @@ func (s *Server) handlePublicView(w http.ResponseWriter, r *http.Request) {
 		w.Write([]byte(`<!doctype html><html><head><meta charset="utf-8"><meta name="viewport" content="width=device-width,initial-scale=1"><title>` + title + `</title><style>` + htmlDocStyle + `</style></head><body><pre style="white-space:pre-wrap">` + html.EscapeString(md) + `</pre></body></html>`))
 		return
 	}
-	w.Write([]byte(s.pageHTML(p, false, s.printOptionsFor(p))))
+	w.Write([]byte(s.pageHTML(p, false, publicPrintOptions(s.printOptionsFor(p)))))
+}
+
+// publicPrintOptions trims the print view down to what an anonymous visitor
+// may read. The signed-in print view renders every optional part and hides the
+// unchosen ones by class, so its side panel can switch them on without asking
+// the server. A visitor has no panel, so a hidden part is only data sitting in
+// the source: every comment on the page with its author's name, and the names
+// of the workspace and the instance. The names go out only when the house style
+// actually shows them, on a cover. Comments never do: a discussion about a page
+// is not part of what was published.
+func publicPrintOptions(o printOptions) printOptions {
+	o.Comments = false
+	o.CommentL = nil
+	if !o.Cover || !o.Workspace {
+		o.WSName, o.Instance = "", ""
+	}
+	return o
 }
