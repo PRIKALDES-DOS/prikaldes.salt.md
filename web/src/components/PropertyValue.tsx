@@ -860,8 +860,13 @@ function UrlValue({ def, value, onChange, readOnly, compact }: Props) {
   const cancelled = useRef(false);
   let href = '';
   let label = raw;
+  // The chip shows the host, the full address is what opens; a whole URL on a
+  // board card is noise. A scheme counts only when no port number follows its
+  // colon: "intranet.local:8080/wiki" would otherwise parse as the scheme
+  // "intranet.local:" and lose the link it always had. Only http and https may
+  // be opened, so a stored javascript: address stays text.
   try {
-    const url = new URL(/^[a-z][a-z\d+.-]*:/i.test(raw) ? raw : 'https://' + raw);
+    const url = new URL(/^[a-z][a-z\d+.-]*:(?!\d)/i.test(raw) ? raw : 'https://' + raw);
     if (url.protocol === 'http:' || url.protocol === 'https:') {
       href = url.href;
       label = url.hostname.replace(/^www\./, '');
