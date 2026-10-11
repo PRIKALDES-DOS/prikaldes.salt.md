@@ -448,7 +448,7 @@
           "waitFor": ".sidebar"
         },
         {
-          "click": "[title^=\"Share to web\"]"
+          "click": "[title^=\"Shar\"]"
         },
         {
           "wait": 700
