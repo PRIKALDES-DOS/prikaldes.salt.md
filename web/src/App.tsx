@@ -26,6 +26,15 @@ import ThemeSwitch, { type ThemePref } from './ThemeSwitch';
 import { applyPrefs, plural, t } from './i18n';
 import { useShortcut } from './keys';
 import { focusKey, useNavEntry } from './nav';
+import {
+  forgetPageScroll,
+  forgetViewId,
+  forgetViewScrolls,
+  readPageScroll,
+  readViewId,
+  writePageScroll,
+  writeViewId,
+} from './pageUiState';
 import ShortcutSheet from './components/ShortcutSheet';
 import { guardDrops } from './dropFiles';
 
@@ -760,6 +769,10 @@ export default function App() {
       n.delete(id);
       return n;
     });
+    // The remembered scroll positions die with the tab. The chosen VIEW stays:
+    // that is a choice about the collection, not about the tab.
+    forgetPageScroll(id);
+    forgetViewScrolls(id);
     if (activeRef.current === id) {
       const neighbour = next[i] ?? next[i - 1] ?? null;
       pushTabHistory(next, neighbour, true);
