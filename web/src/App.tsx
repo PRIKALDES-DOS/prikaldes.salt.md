@@ -912,6 +912,15 @@ export default function App() {
 
   const updateMeta = useCallback((id: string, patch: Partial<PageMeta>) => {
     setPages((prev) => prev?.map((p) => (p.id === id ? { ...p, ...patch } : p)) ?? prev);
+    // A row opened in its own tab is not in the page list, so its tab title
+    // would keep the old name after a rename.
+    setExtraPages((prev) => {
+      const p = prev.get(id);
+      if (!p) return prev;
+      const next = new Map(prev);
+      next.set(id, { ...p, ...patch });
+      return next;
+    });
   }, []);
 
   // Import for the empty-state (no pages yet). The primary import entry point is

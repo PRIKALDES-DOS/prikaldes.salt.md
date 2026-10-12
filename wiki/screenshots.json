@@ -448,7 +448,10 @@
           "waitFor": ".sidebar"
         },
         {
-          "click": "[title^=\"Share to web\"]"
+          "click": ".share-wrap .icon-btn[title=\"Shared\"]"
+        },
+        {
+          "click": ".share-menu button:has-text(\"New link\")"
         },
         {
           "wait": 700

@@ -196,7 +196,7 @@ drawn as a proper tree item rather than as a row, so it keeps its full ⋯ menu.
 salt.md keeps several pages open at once, like an editor rather than like a web
 page. Three ways to open one in a new tab:
 
-- **Open in new tab**, the first entry of the sidebar ⋯ menu — and of a board
+- **Open in new tab**, the first entry of the sidebar ⋯ menu and of a board
   card's ⋯ menu.
 - **⌘-click** (Ctrl-click on Windows and Linux) a row in the sidebar tree, a
   card on a board, a row in any collection view, or a note in the notes column.

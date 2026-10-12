@@ -4,6 +4,7 @@ import { Table2 } from 'lucide-react';
 import { useBlockCtx } from './blockContext';
 import { MERMAID_REV, renderMermaid } from './mermaidLoader';
 import { PageIcon } from './pageIcon';
+import { openPage, openPageAux } from './pageOpen';
 import CollectionView, { type EmbedState } from './components/CollectionView';
 import { plural, t } from './i18n';
 
@@ -159,8 +160,9 @@ export const subpagesSpec = createReactBlockSpec(
   } as const,
   {
     render: () => {
-      const { pagesById, pageId, onNavigate } = useBlockCtx();
+      const { pagesById, pageId, onNavigate, onOpenInNewTab } = useBlockCtx();
       if (!pageId) return null;
+      const openers = { onNavigate, onOpenInNewTab };
       const kids = [...pagesById.values()]
         .filter((p) => p.parentId === pageId && !p.trashed)
         .sort((a, b) => (a.position ?? 0) - (b.position ?? 0));
@@ -173,7 +175,8 @@ export const subpagesSpec = createReactBlockSpec(
               key={p.id}
               type="button"
               className="bn-toc-entry"
-              onClick={() => onNavigate(p.id)}
+              onClick={(e) => openPage(e, p.id, openers)}
+              onAuxClick={(e) => openPageAux(e, p.id, openers)}
               title={p.title || t('Untitled')}
             >
               <PageIcon icon={p.icon} size={14} /> {p.title || t('Untitled')}

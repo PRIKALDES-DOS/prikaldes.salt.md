@@ -648,14 +648,19 @@ function PageHeader({
       // Absolute URL on the external domain when configured; else current origin.
       setShareUrl(res.url.startsWith('http') ? res.url : location.origin + res.url);
       setShareOff(false);
+      onPagesChanged();
     } catch {
       toast(t('Sharing failed'));
     }
   };
 
+  // Opening the menu publishes a page that is not shared yet. A page that is
+  // keeps its link: the server stores only a hash of the token, so the address
+  // cannot be shown again, and minting a new one on open broke it for everyone
+  // who had it. The globe marker made exactly that click the inviting one.
   const openShare = async () => {
     setShareOpen((o) => !o);
-    if (!shareUrl) await createShare(shareExpiry, sharePassword);
+    if (!shareUrl && !isShared) await createShare(shareExpiry, sharePassword);
   };
 
   const changeExpiry = async (days: number) => {
@@ -669,6 +674,7 @@ function PageHeader({
     setShareUrl(null);
     setShareOff(true);
     setShareOpen(false);
+    onPagesChanged();
   };
 
   const saveMeta = (patch: { title?: string; icon?: string; cover?: string; tags?: string[]; description?: string }) => {
@@ -870,12 +876,28 @@ function PageHeader({
             <button className={'icon-btn topbar-wide-only' + (isShared ? ' shared-active' : '')} title={isShared ? t('Shared') : t('Share to web (read-only link)')} onClick={openShare}>
               <Globe size={17} />
             </button>
-            {shareOpen && (
+            {shareOpen && !shareUrl && isShared && (
               <div className="menu share-menu">
-                <div className="share-hint">Anyone with this link can view this page (read-only).</div>
-                <input className="share-input" readOnly value={shareUrl ?? 'Creating…'} onFocus={(e) => e.currentTarget.select()} />
+                <div className="share-hint">
+                  {t('This page is shared publicly. Its address was only shown when the link was made.')}
+                </div>
+                <div className="share-hint">{t('A new link stops the old one from working.')}</div>
+                <div className="share-actions">
+                  <button className="btn-sm" onClick={() => void createShare(shareExpiry, sharePassword)}>
+                    {t('New link')}
+                  </button>
+                  <button className="btn-sm danger" onClick={stopShare}>
+                    {t('Stop sharing')}
+                  </button>
+                </div>
+              </div>
+            )}
+            {shareOpen && (shareUrl || !isShared) && (
+              <div className="menu share-menu">
+                <div className="share-hint">{t('Anyone with this link can view this page (read-only).')}</div>
+                <input className="share-input" readOnly value={shareUrl ?? t('Creating…')} onFocus={(e) => e.currentTarget.select()} />
                 <label className="share-expiry">
-                  Expires:
+                  {t('Expires:')}
                   <select
                     className="prop-select"
                     value={shareExpiry}

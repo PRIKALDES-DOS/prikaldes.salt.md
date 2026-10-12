@@ -311,7 +311,7 @@ const germanLines = [];
 // an id or a URL — anything ambiguous belongs in the line list above, not here.
 // Verbs and participles — what a BUTTON says.
 const GERMAN_STRONG =
-  /(?<![\w-])(absenden|fehlgeschlagen|umbenennen|umbenannt|verschieben|verschoben|loeschen|löschen|geloescht|gelöscht|gespeichert|speichern|hochladen|hochgeladen|anlegen|angelegt|erstellen|erstellt|schliessen|schließen|abbrechen|hinzufuegen|hinzufügen|entfernen|entfernt|bearbeiten|suchen|senden|gesendet|teilen|geteilt|beitritt|importierter|einsammeln|referenzierte|auswaehlen|auswählen|verbinden|verbunden|zurueck|zurück|weiter|fertig|ungueltig|ungültig|vorhanden|erforderlich|aufklappen|zuklappen|einklappen|ausklappen|umbenannt|gespeicherte|geoeffnet|geöffnet|geschlossen|verworfen|uebernehmen|übernehmen|bestaetigen|bestätigen|wiederherstellen|zuruecksetzen|zurücksetzen)(?![\w])/iu;
+  /(?<![\w-])(absenden|abmelden|anmelden|angemeldet|eingeladen|wurdest|fehlgeschlagen|umbenennen|umbenannt|verschieben|verschoben|loeschen|löschen|geloescht|gelöscht|gespeichert|speichern|hochladen|hochgeladen|anlegen|angelegt|erstellen|erstellt|schliessen|schließen|abbrechen|hinzufuegen|hinzufügen|entfernen|entfernt|bearbeiten|suchen|senden|gesendet|teilen|geteilt|beitritt|importierter|einsammeln|referenzierte|auswaehlen|auswählen|verbinden|verbunden|zurueck|zurück|weiter|fertig|ungueltig|ungültig|vorhanden|erforderlich|aufklappen|zuklappen|einklappen|ausklappen|umbenannt|gespeicherte|geoeffnet|geöffnet|geschlossen|verworfen|uebernehmen|übernehmen|bestaetigen|bestätigen|wiederherstellen|zuruecksetzen|zurücksetzen)(?![\w])/iu;
 
 // Nouns and adjectives — what a MENU ENTRY or a description says, and the class
 // both other rules were blind to. "Hervorgehobener Hinweis mit Emoji" sat in
@@ -329,11 +329,14 @@ const GERMAN_NOUNS =
  *  gefunden" has no umlaut and two words, and the line rule would never see it. */
 const stringReadsGerman = (s) => GERMAN_STRONG.test(s) || GERMAN_NOUNS.test(s);
 
-// Every quoted string in the source, JSX text included via the line rule above.
+// Every quoted string in the source, and every run of JSX text between a `>`
+// and the next `<`. The text was the gap: "Abmelden &amp; neu anmelden" sat on
+// the invitation page as plain JSX, too short for the line rule and no string
+// for this one, so neither saw it.
 const germanStrings = [];
 {
   const stack = [src];
-  const STR = /(['"`])((?:\\.|(?!\1)[^\\])*?)\1/g;
+  const STR = /(['"`])((?:\\.|(?!\1)[^\\])*?)\1|>([^<>{}]+)</g;
   while (stack.length) {
     const d = stack.pop();
     for (const name of readdirSync(d)) {
@@ -347,7 +350,7 @@ const germanStrings = [];
           .forEach((line, i) => {
             if (/i18n-ok:\s*\S/.test(line)) return;
             for (const m of line.matchAll(STR)) {
-              const text = m[2];
+              const text = m[2] ?? m[3];
               if (!/[A-Za-zÄÖÜäöüß]{3}/.test(text)) continue;
               if (stringReadsGerman(text)) {
                 germanStrings.push(`${rel}:${i + 1}  ${text.slice(0, 60)}`);

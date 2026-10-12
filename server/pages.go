@@ -223,30 +223,37 @@ func (s *Server) handleGetPage(w http.ResponseWriter, r *http.Request) {
 	writeJSON(w, p)
 }
 
-// liveShared reports which of the given pages carry a live public link
-// (read-share or form-share, unexpired). share_links is the only source of
-// truth — pages carry no flag of their own — so this is one extra query per
-// listing, not a column to keep in sync.
+// liveShared reports which of the given pages carry a live public read link.
+// share_links is the only source of truth (pages carry no flag of their own),
+// so this is one extra query per listing, not a column to keep in sync.
+//
+// A form link does not count. It publishes a way to add rows, not the rows,
+// and the marker would invite a click on the globe that publishes them.
+//
+// The ids go in chunks: a listing can hold more pages than SQLite takes
+// parameters in one statement, and a failed query here would only make every
+// marker vanish without a word.
 func (s *Server) liveShared(ids []string) map[string]bool {
 	live := map[string]bool{}
-	if len(ids) == 0 {
-		return live
-	}
-	args := make([]any, len(ids)+1)
-	for i, id := range ids {
-		args[i] = id
-	}
-	args[len(ids)] = now()
-	rows, err := s.db.Query(`SELECT DISTINCT page_id FROM share_links WHERE page_id IN (`+placeholders(len(ids))+`) AND (expires_at IS NULL OR expires_at = '' OR expires_at > ?)`, args...)
-	if err != nil {
-		return live
-	}
-	defer rows.Close()
-	for rows.Next() {
-		var id string
-		if err := rows.Scan(&id); err == nil {
-			live[id] = true
+	for start := 0; start < len(ids); start += 500 {
+		chunk := ids[start:min(start+500, len(ids))]
+		args := make([]any, 0, len(chunk)+1)
+		for _, id := range chunk {
+			args = append(args, id)
 		}
+		args = append(args, now())
+		rows, err := s.db.Query(`SELECT DISTINCT page_id FROM share_links WHERE page_id IN (`+placeholders(len(chunk))+`)
+			AND mode != 'form' AND (expires_at IS NULL OR expires_at = '' OR expires_at > ?)`, args...)
+		if err != nil {
+			return live
+		}
+		for rows.Next() {
+			var id string
+			if rows.Scan(&id) == nil {
+				live[id] = true
+			}
+		}
+		rows.Close()
 	}
 	return live
 }

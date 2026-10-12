@@ -69,27 +69,27 @@ Three behaviours of this menu are worth knowing before you use it a second time.
 small globe: in the sidebar tree, in the sub-pages list, and on the topbar
 globe button itself, which is highlighted while the link is live. An expired
 link drops the marker on its own. So to check whether a page is shared, look
-at the marker — opening the menu publishes the page if it was not.
+at the marker.
 
-**Opening the menu publishes the page.** There is no "publish" button and no
-confirmation. If you open the globe menu on an unmarked page, you have shared
-it. Use **Stop sharing** to undo that.
+**Opening the menu publishes an unshared page.** There is no "publish" button
+and no confirmation. If you open the globe menu on an unmarked page, you have
+shared it. Use **Stop sharing** to undo that.
 
-**The menu shows the state, not the link.** The marker tells you a page is
-published, but the dialog cannot show you the link you made
-last week; it makes a fresh one, and the old one dies at that moment. The same
-happens when you change the expiry or leave the password field: each of those
-re-mints the link. So the address you send out is the address you copied in that
-sitting; a link that has been passed around cannot be given a password
-afterwards without breaking it.
+**A shared page keeps its link when you open the menu.** salt.md stores only a
+scrambled form of the token, so the menu cannot show you the address made last
+week. On a page that is already shared it says so ("This page is shared
+publicly. Its address was only shown when the link was made.") and offers two
+buttons: **New link** makes a fresh address and the old one stops working at
+that moment, **Stop sharing** ends it. Changing the expiry or leaving the
+password field re-mints the link too. So the address you send out is the
+address you copied in that sitting; a link that has been passed around cannot
+be given a password afterwards without breaking it.
 
-**A second sitting publishes an unprotected link.** The expiry and the password
-live only in the open menu, never on the page. Navigate away and back, or
-reload the browser, and the menu reopens at `Never` with an empty password box,
-and mints a link on exactly those settings. A page that carried a password and a
-seven-day expiry yesterday is public with neither from the moment somebody opens
-its globe menu today. If protection matters, set it again in the same sitting
-and hand out the new address.
+**A new link starts unprotected.** The expiry and the password live only in
+the open menu, never on the page. Navigate away and back, or reload the
+browser, and the menu starts again at `Never` with an empty password box, so
+**New link** mints an open link. If protection matters, set it again in the
+same sitting and hand out the new address.
 
 Taking protection off works the same way, which is the one useful side of it:
 clearing the password field and leaving it, or setting **Expires:** back to
@@ -109,8 +109,8 @@ any more than they can open it.
 
 **The link belongs to the page, not to the person who made it.** Anyone with
 write access can publish and revoke, and they all act on the same single link.
-A colleague opening the globe menu on a page you published replaces the address
-that is already circulating; their **Stop sharing** kills it.
+A colleague who presses **New link** on a page you published replaces the
+address that is already circulating; their **Stop sharing** kills it.
 
 ## The address in the link
 
@@ -215,6 +215,7 @@ What is **not** in the document:
 | Properties of a database row | Nothing; only the row's title and body |
 | Comments, notes, version history | Nothing. They are never part of a share |
 | A table of contents block | Nothing; it is built by the app |
+| A sub-pages block | Nothing; it is built by the app |
 | A table's header row | Ordinary cells. The document has no header row, so the first row is not set apart |
 
 The file limitation is the one that catches people out. An image you dropped

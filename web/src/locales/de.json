@@ -874,7 +874,7 @@
   "You cannot grant yourself access here. Use emergency access, which is logged.": "Du kannst dir hier keinen Zugriff selbst geben. Nutze den Notfallzugriff, er wird protokolliert.",
   "You cannot grant yourself access here.": "Eigenen Zugriff kann man sich hier nicht geben.",
   "You have been invited.": "Du wurdest eingeladen.",
-  "You have been invited to the workspace \"{workspace}\".": "Du wurdest zum Workspace „{workspace}“ eingeladen.",
+  "You have been invited to the workspace “{workspace}”.": "Du wurdest zum Workspace „{workspace}“ eingeladen.",
   "You have {pages} here. They stay in the workspace and will only be visible to its admins afterwards.": "Du hast hier {pages} liegen. Sie bleiben im Workspace und sind danach nur noch für dessen Admins sichtbar.",
   "You will be an ordinary admin afterwards and cannot undo this yourself.": "Du bist danach gewöhnlicher Admin und kannst das nicht selbst rückgängig machen.",
   "Your IP (as the server sees it)": "Deine IP (Server-Sicht)",
@@ -1082,5 +1082,11 @@
   "Only these can be picked:": "Nur diese stehen zur Auswahl:",
   "Everybody can be picked. Tick people to narrow it down:": "Alle stehen zur Auswahl. Ankreuzen, um einzugrenzen:",
   "Open link": "Link öffnen",
-  "Edit": "Bearbeiten"
+  "Edit": "Bearbeiten",
+  "This page is shared publicly. Its address was only shown when the link was made.": "Diese Seite ist öffentlich geteilt. Ihre Adresse wurde nur beim Erstellen des Links angezeigt.",
+  "A new link stops the old one from working.": "Mit einem neuen Link funktioniert der alte nicht mehr.",
+  "New link": "Neuer Link",
+  "Anyone with this link can view this page (read-only).": "Jeder mit diesem Link kann die Seite ansehen (nur lesen).",
+  "Expires:": "Läuft ab:",
+  "Creating…": "Wird erstellt…"
 }
