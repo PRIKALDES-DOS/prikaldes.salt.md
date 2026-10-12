@@ -140,7 +140,7 @@ nothing hands it back. Reading it means the browser, or `GET
 | Workspace rules | 16000 characters |
 | A single note | 2000 characters, truncated silently |
 
-Over the rate limit you get `rate limit exceeded — too many requests, slow
+Over the rate limit you get `rate limit exceeded: too many requests, slow
 down` as an ordinary tool error. Over the body limit the server refuses
 **before reading** (it checks Content-Length first) and tells you to use
 `/api/upload` instead.
@@ -354,7 +354,7 @@ piled on top.
 
 Errors: `workspace "…" not found`; or, when the workspace is yours but outside
 this connection's grant, `workspace "…" is outside what this connection was
-granted — ask for it to be added, or name one it can reach`. The second wording
+granted. Ask for it to be added, or name one it can reach`. The second wording
 is deliberate: "not found" for something you own sends an agent hunting for a
 typo.
 
@@ -1060,10 +1060,10 @@ database(s) with their schemas and views, no rows.` Changing returns
 
 Errors: `name is required`; `name is too long`; `creating workspaces is disabled
 on this instance`; `this connection is limited to particular workspaces, so it
-cannot create new ones — it would not be able to open them`; `pass workspace_id
+cannot create new ones. It would not be able to open them`; `pass workspace_id
 to set an icon — a new workspace is created with a name only`; `only a workspace
 admin can change "…"`; `nothing to change: pass name or icon`; `workspace "…"
-has no databases to copy — nothing to use as a blueprint`.
+has no databases to copy: nothing to use as a blueprint`.
 
 ### propose_workspace_rules
 
@@ -1094,7 +1094,7 @@ withdraw.`
 Errors: `this API token is read-only; proposing rules requires a write token`;
 `workspace "…" not found`; `workspace rules are managed by workspace admins;
 your token's account is not one here`; `workspace rules are limited to 16000
-characters`; `the pending proposal is not yours to withdraw — an admin can
+characters`; `the pending proposal is not yours to withdraw. An admin can
 dismiss it in the browser`.
 
 ## Bulk import
@@ -1227,7 +1227,7 @@ is how it went" is the most useful last line there is.
 
 Returns `Checked in on page <id>. You stay listed until you check out (done:
 true) — nothing expires on you mid-task.` or `Checked out of page <id>. Your
-last note stays on the page as a trail entry.` or `Nothing to check out of — you
+last note stays on the page as a trail entry.` or `Nothing to check out of: you
 were not marked as working on that page.`
 
 Errors: `page_id is required`; `page "…" not found`.

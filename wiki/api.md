@@ -209,7 +209,7 @@ are the calls that hand you a document:
 Failures carry an English sentence and, usually, a machine-readable code:
 
 ```json
-{ "error": "This action requires signing in through a browser — an API token is not enough.",
+{ "error": "This action requires signing in through a browser. An API token is not enough.",
   "code": "session_required" }
 ```
 
