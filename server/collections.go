@@ -255,9 +255,10 @@ func (f rowFilter) where() (string, []any) {
 // SQLite and injects computed (rollup/formula/relation) values. Shared by the
 // REST handler and the MCP query_rows tool so both behave identically.
 //
-// groups are ORed; the conditions inside one group are ANDed. A flat filter
-// list is one group. Empty groups constrain nothing.
-func (s *Server) collectionRowsQuery(u *user, colID string, groups [][]rowFilter, sortParam string, limit, offset int) (list []map[string]any, total int, err error) {
+// flat is ANDed as it stands; groups are ORed, the conditions inside one group
+// ANDed, and the two together read "this AND (that OR those)". A group with no
+// complete condition constrains nothing.
+func (s *Server) collectionRowsQuery(u *user, colID string, flat []rowFilter, groups [][]rowFilter, sortParam string, limit, offset int) (list []map[string]any, total int, err error) {
 	where := []string{"parent_id = ?", "trashed_at IS NULL"}
 	args := []any{colID}
 	// Other people's private rows stay out. The condition belongs in the SQL,
@@ -266,6 +267,15 @@ func (s *Server) collectionRowsQuery(u *user, colID string, groups [][]rowFilter
 	rule, ruleArgs := s.privateRowRule(u.ID, colID)
 	where = append(where, rule)
 	args = append(args, ruleArgs...)
+	// The flat list is a term of its own beside the OR of the groups. Copied
+	// into every group instead, it made an unfinished group match whatever the
+	// flat list matched, so adding a condition could widen the answer.
+	for _, f := range flat {
+		if cond, cargs := f.where(); cond != "" {
+			where = append(where, cond)
+			args = append(args, cargs...)
+		}
+	}
 	ors := make([]string, 0, len(groups))
 	for _, g := range groups {
 		ands := make([]string, 0, len(g))
@@ -382,20 +392,6 @@ func parseFilterGroups(vals []string) [][]rowFilter {
 	return groups
 }
 
-// distributeFilters folds a flat filter list into every OR group: `filter`
-// beside `filter_group` reads "this AND (that OR those)". Without groups the
-// flat list is the one group there is.
-func distributeFilters(flat []rowFilter, groups [][]rowFilter) [][]rowFilter {
-	if len(groups) == 0 {
-		return [][]rowFilter{flat}
-	}
-	out := make([][]rowFilter, 0, len(groups))
-	for _, g := range groups {
-		out = append(out, append(append([]rowFilter{}, flat...), g...))
-	}
-	return out
-}
-
 func (s *Server) handleCollectionRows(w http.ResponseWriter, r *http.Request) {
 	colID := r.PathValue("id")
 	if !s.canReadReq(r, colID) {
@@ -438,7 +434,7 @@ func (s *Server) handleCollectionRows(w http.ResponseWriter, r *http.Request) {
 		}
 		filters = append(filters, rowFilter{Prop: propID, Op: op, Value: value})
 	}
-	list, total, err := s.collectionRowsQuery(requestUser(r), colID, distributeFilters(filters, parseFilterGroups(q["filter_group"])), q.Get("sort"), limit, offset)
+	list, total, err := s.collectionRowsQuery(requestUser(r), colID, filters, parseFilterGroups(q["filter_group"]), q.Get("sort"), limit, offset)
 	if err != nil {
 		httpError(w, 500, err.Error())
 		return

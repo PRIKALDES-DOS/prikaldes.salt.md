@@ -28,9 +28,9 @@ func (s *Server) mcpGetSchema(pageID string) (string, error) {
 }
 
 // mcpQueryRows filters/sorts/paginates a database's rows server-side and returns
-// compact JSON including computed rollup/formula values. groups are ORed, the
-// conditions inside one group ANDed; a flat filter list is one group.
-func (s *Server) mcpQueryRows(u *user, pageID string, groups [][]rowFilter, sort string, limit, offset int) (string, error) {
+// compact JSON including computed rollup/formula values. flat and groups
+// combine as in collectionRowsQuery: "this AND (that OR those)".
+func (s *Server) mcpQueryRows(u *user, pageID string, flat []rowFilter, groups [][]rowFilter, sort string, limit, offset int) (string, error) {
 	var isCollection int
 	if s.db.QueryRow(`SELECT COUNT(*) FROM collections WHERE page_id = ?`, pageID).Scan(&isCollection); isCollection == 0 {
 		return "", fmt.Errorf("page %q is not a database", pageID)
@@ -46,7 +46,7 @@ func (s *Server) mcpQueryRows(u *user, pageID string, groups [][]rowFilter, sort
 	for i, g := range groups {
 		resolved[i] = s.resolveFilterValues(pageID, g)
 	}
-	rows, total, err := s.collectionRowsQuery(u, pageID, resolved, sort, limit, offset)
+	rows, total, err := s.collectionRowsQuery(u, pageID, s.resolveFilterValues(pageID, flat), resolved, sort, limit, offset)
 	if err != nil {
 		return "", err
 	}

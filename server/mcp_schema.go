@@ -384,10 +384,8 @@ type viewSpec struct {
 	DateProp    *string           `json:"date_prop"`
 	EndDateProp *string           `json:"end_date_prop"`
 	Filters     *[]map[string]any `json:"filters"`
-	// OR groups instead of a flat list: ANDed inside, ORed between. Either
-	// filters or filter_groups replaces the whole filter (see applyViewSpec);
-	// an empty (but present) list clears the groups together with the flat
-	// list they mirror.
+	// Refused, not stored (see applyViewSpec). Kept as a field so an agent
+	// that sends it hears why instead of having it dropped without a word.
 	FilterGroups *[][]map[string]any `json:"filter_groups"`
 	// "propertyId:asc" — deliberately the same spelling query_rows uses, so an
 	// agent learns one form and not two. "" clears the sort.
@@ -416,7 +414,7 @@ func checkViewFilter(f map[string]any, label string, has func(string) bool) (map
 		op = "is"
 	}
 	if !validFilterOps[op] {
-		return nil, fmt.Errorf("%s: unknown op %q — use is, is_not, contains, gt, lt, between, is_empty or is_not_empty", label, op)
+		return nil, fmt.Errorf("%s: unknown op %q. Use is, is_not, contains, gt, lt, between, is_empty or is_not_empty", label, op)
 	}
 	entry := map[string]any{"property": prop, "op": op}
 	for _, k := range []string{"value", "values", "value2"} {
@@ -489,29 +487,11 @@ func applyViewSpec(view map[string]any, spec viewSpec, schema []map[string]any) 
 		view["filters"] = out
 		delete(view, "filterGroups")
 	}
-	// Groups are applied after a flat list, so when both arrive together the
-	// groups have the last word — matching how the interface writes them.
+	// A view keeps a flat filter list only. The interface reads nothing else,
+	// so groups stored here would decide what an agent sees in the view while
+	// the people looking at the same view see only the first part of it.
 	if spec.FilterGroups != nil {
-		groups := make([]any, 0, len(*spec.FilterGroups))
-		for gi, g := range *spec.FilterGroups {
-			gout := make([]any, 0, len(g))
-			for fi, f := range g {
-				entry, err := checkViewFilter(f, fmt.Sprintf("group %d, filter %d", gi+1, fi+1), has)
-				if err != nil {
-					return err
-				}
-				gout = append(gout, entry)
-			}
-			groups = append(groups, gout)
-		}
-		// The flat list mirrors the first group, so readers that only know
-		// the old shape still see something honest.
-		mirror := []any{}
-		if len(groups) > 0 {
-			mirror = groups[0].([]any)
-		}
-		view["filters"] = mirror
-		view["filterGroups"] = groups
+		return fmt.Errorf("filter_groups cannot be saved on a view yet: the interface shows flat filters only. Use filters here; query_rows takes filter_groups")
 	}
 	if spec.Sort != nil {
 		if strings.TrimSpace(*spec.Sort) == "" {

@@ -217,7 +217,7 @@ because renaming a tool breaks every agent configuration in existence.
 | `list` | What is there of a kind: pages, templates, tags, workspaces, files, users, cover presets. For files, `under: <page id>` narrows it to one page and its sub-pages. |
 | `get_page` | One page as Markdown; `include_children` returns the whole sub-tree in one answer. |
 | `get_collection` | A database's property schema and its views, with ids. |
-| `query_rows` | Rows with server-side filter, sort and paging, including computed rollups and formulas. |
+| `query_rows` | Rows with server-side filter, sort and paging, including computed rollups and formulas. `filter_groups` adds OR: every condition in `filter` holds, plus one of the groups. |
 | `get_links` | What points at one page, or the whole graph. |
 | `get_workspace` | Name, role, members and their ids, page and database counts, and the workspace rules. |
 | `get_permissions` | Whether a page can be read, written or deleted, and why it is read-only if it is. |

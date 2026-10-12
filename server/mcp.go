@@ -14,6 +14,17 @@ import (
 	"strings"
 )
 
+// filterConditionSchema is one filter condition as agents are shown it, in
+// query_rows' filter and filter_groups and in set_view's filters alike.
+func filterConditionSchema() map[string]any {
+	return map[string]any{"type": "object", "properties": map[string]any{
+		"property": map[string]any{"type": "string", "description": "Property id from get_collection"},
+		"op":       map[string]any{"type": "string", "description": "is (default) | is_not | contains | gt | lt | between | is_empty | is_not_empty"},
+		"value":    map[string]any{"type": "string", "description": "Compared value; ignored for is_empty/is_not_empty. For between, the LOWER bound."},
+		"values":   map[string]any{"type": "array", "items": map[string]any{"type": "string"}, "description": "Several values for is/is_not: \"status is any of open, waiting\" as ONE condition. Use instead of value, not beside it."},
+		"value2":   map[string]any{"type": "string", "description": "Upper bound of between, inclusive. A date range is value..value2."}}}
+}
+
 func bytesTrimSpace(b []byte) []byte { return bytes.TrimSpace(b) }
 
 // A minimal, dependency-free MCP server (Streamable HTTP transport,
@@ -176,15 +187,10 @@ var mcpTools = []map[string]any{
 		"inputSchema": map[string]any{"type": "object",
 			"properties": map[string]any{
 				"page_id": map[string]any{"type": "string", "description": "The database (collection) page id"},
-				"filter": map[string]any{"type": "array", "description": "Filters, ANDed together — and distributed into every filter_groups group when both are given. Each needs a property id from get_collection — note that the row TITLE is not a property; filter titles with the search tool instead.",
-					"items": map[string]any{"type": "object", "properties": map[string]any{
-						"property": map[string]any{"type": "string", "description": "Property id from get_collection"},
-						"op":       map[string]any{"type": "string", "description": "is (default) | is_not | contains | gt | lt | between | is_empty | is_not_empty"},
-						"value":    map[string]any{"type": "string", "description": "Compared value; ignored for is_empty/is_not_empty. For between, the LOWER bound."},
-						"values":   map[string]any{"type": "array", "items": map[string]any{"type": "string"}, "description": "Several values for is/is_not — \"status is any of open, waiting\" as ONE condition. Use instead of value, not beside it."},
-						"value2":   map[string]any{"type": "string", "description": "Upper bound of between, inclusive. A date range is value..value2."}}}},
-				"filter_groups": map[string]any{"type": "array", "description": "OR groups: each group is an array of filters in the same shape, ANDed inside, ORed between groups. A filter beside filter_groups holds for every group.",
-					"items": map[string]any{"type": "array", "items": map[string]any{"type": "object"}}},
+				"filter": map[string]any{"type": "array", "description": "Filters, ANDed together, and ANDed with filter_groups when both are given: \"this AND (that OR those)\". Each needs a property id from get_collection. The row TITLE is not a property; filter titles with the search tool instead.",
+					"items": filterConditionSchema()},
+				"filter_groups": map[string]any{"type": "array", "description": "OR groups: each group is an array of conditions shaped like the items of filter, ANDed inside a group and ORed between groups. A group without one complete condition is ignored.",
+					"items": map[string]any{"type": "array", "items": filterConditionSchema()}},
 				"sort":   map[string]any{"type": "string", "description": "propertyId:asc or propertyId:desc"},
 				"limit":  map[string]any{"type": "integer", "description": "Max rows (default 50, max 500)"},
 				"offset": map[string]any{"type": "integer"},
@@ -353,8 +359,7 @@ var mcpTools = []map[string]any{
 				"group_by":      map[string]any{"type": "string", "description": "board: the property to group columns by. Pass \"\" to clear."},
 				"date_prop":     map[string]any{"type": "string", "description": "calendar/timeline: the date property"},
 				"end_date_prop": map[string]any{"type": "string", "description": "timeline: optional end date, otherwise one-day bars"},
-				"filters":       map[string]any{"type": "array", "items": map[string]any{"type": "object"}, "description": "Each {property, op?, value?}, ANDed together. op: is (default) | is_not | contains | gt | lt | is_empty | is_not_empty. A board people actually work in usually needs one — without \"status is_not done\" the finished column grows forever and pushes the work aside. Pass [] to clear. Either filters or filter_groups replaces the whole filter."},
-				"filter_groups": map[string]any{"type": "array", "items": map[string]any{"type": "array", "items": map[string]any{"type": "object"}}, "description": "OR groups instead of a flat list: conditions inside one group are ANDed, groups are ORed. Replaces the whole filter; the flat list is reset to mirror the first group. Pass [] to clear."},
+				"filters":       map[string]any{"type": "array", "items": filterConditionSchema(), "description": "Conditions ANDed together, shaped like query_rows' filter. A board people actually work in usually needs one: without \"status is_not done\" the finished column grows forever and pushes the work aside. Pass [] to clear. A view keeps flat filters only, because that is all the interface shows; OR groups work in query_rows."},
 				"sort":          map[string]any{"type": "string", "description": "\"propertyId:asc\" or \"propertyId:desc\", the same spelling query_rows uses. Pass \"\" to clear."},
 				"hidden":        map[string]any{"type": "array", "items": map[string]any{"type": "string"}, "description": "Property ids to hide in this view. Pass [] to show all."},
 			},
@@ -1140,7 +1145,7 @@ func (s *Server) mcpCall(u *user, name string, rawArgs json.RawMessage, publicBa
 			if args.Sort != nil {
 				sort = *args.Sort
 			}
-			return s.mcpQueryRows(u, args.PageID, distributeFilters(filters, parsed), sort, args.Limit, args.Offset)
+			return s.mcpQueryRows(u, args.PageID, filters, parsed, sort, args.Limit, args.Offset)
 		case "set_properties":
 			// One row or many. With updates the central page check does not bite,
 			// so the permissions of EVERY row are checked inside the function.

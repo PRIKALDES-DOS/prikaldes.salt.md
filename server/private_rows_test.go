@@ -144,3 +144,22 @@ func TestPrivateRowsStayOutOfGetPageOverMCP(t *testing.T) {
 	}
 	assertRows(t, "get_page", rec.Body.String(), []string{"Shared row", "Member secret"}, []string{"Admin secret"})
 }
+
+// Filter groups OR their conditions together. The private-row condition must
+// stay outside that OR: another member's private row that matches a group is
+// still nobody else's business.
+func TestPrivateRowsStayOutOfFilterGroups(t *testing.T) {
+	f := newPrivateRowsFixture(t)
+	list, _, err := f.s.collectionRowsQuery(&user{ID: f.member}, f.col, nil, [][]rowFilter{
+		{{Prop: "amount", Op: "gt", Value: "50000"}},
+		{{Prop: "amount", Op: "lt", Value: "15"}},
+	}, "", 100, 0)
+	if err != nil {
+		t.Fatalf("query: %v", err)
+	}
+	var titles []string
+	for _, row := range list {
+		titles = append(titles, row["title"].(string))
+	}
+	assertRows(t, "filter groups", strings.Join(titles, ", "), []string{"Shared row"}, []string{"Admin secret"})
+}

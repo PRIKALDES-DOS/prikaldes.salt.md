@@ -60,7 +60,7 @@ func count(t *testing.T, s *Server, col string, f rowFilter) int {
 
 func countGroups(t *testing.T, s *Server, col string, groups [][]rowFilter) int {
 	t.Helper()
-	_, total, err := s.collectionRowsQuery(&user{ID: "u"}, col, groups, "", 100, 0)
+	_, total, err := s.collectionRowsQuery(&user{ID: "u"}, col, nil, groups, "", 100, 0)
 	if err != nil {
 		t.Fatalf("query: %v", err)
 	}
@@ -154,25 +154,39 @@ func TestFilterGroupsOrSemantics(t *testing.T) {
 	}
 }
 
-// A flat filter beside groups holds for every group: "due after X AND (this
-// OR that)". Checked through distributeFilters, the same combination both the
-// REST handler and query_rows build.
-func TestFilterGroupsDistributeFlat(t *testing.T) {
+// A flat filter beside groups is a term of its own: "this AND (that OR
+// those)", the combination both the REST handler and query_rows build. It used
+// to be copied into every group, which let an unfinished group match whatever
+// the flat filter matched: [klasse a] OR [unfinished] answered 2 rows, and
+// adding "datum is set" answered 4.
+func TestFlatFilterIsATermOfItsOwn(t *testing.T) {
 	s, col := filterFixture(t)
+	query := func(flat []rowFilter, groups [][]rowFilter) int {
+		t.Helper()
+		_, total, err := s.collectionRowsQuery(&user{ID: "u"}, col, flat, groups, "", 100, 0)
+		if err != nil {
+			t.Fatalf("query: %v", err)
+		}
+		return total
+	}
 
 	flat := []rowFilter{{Prop: "klasse", Op: "is_not", Value: "c"}}
-	groups := distributeFilters(flat, [][]rowFilter{
+	groups := [][]rowFilter{
 		{{Prop: "datum", Op: "lt", Value: "2026-04-01"}},
 		{{Prop: "datum", Op: "gt", Value: "2026-06-01"}},
-	})
+	}
 	// (a,01-10) and (b,03-15) pass the first group, (a,08-01) the second;
 	// (c,05-20) fails the flat condition either way.
-	if n := countGroups(t, s, col, groups); n != 3 {
-		t.Errorf("distributed query returned %d, want 3", n)
+	if n := query(flat, groups); n != 3 {
+		t.Errorf("flat AND groups returned %d, want 3", n)
 	}
-	// Without groups the flat list is the one group there is.
-	if n := countGroups(t, s, col, distributeFilters(flat, nil)); n != 3 {
+	if n := query(flat, nil); n != 3 {
 		t.Errorf("flat alone returned %d, want 3", n)
+	}
+
+	unfinished := [][]rowFilter{{{Prop: "klasse", Op: "is", Value: "a"}}, {}}
+	if n := query([]rowFilter{{Prop: "datum", Op: "is_not_empty"}}, unfinished); n != 2 {
+		t.Errorf("a flat condition widened the answer to %d rows, want the 2 of klasse a", n)
 	}
 }
 
