@@ -168,6 +168,8 @@ func renderBlocks(b *strings.Builder, blocks []mdBlock, depth int) {
 			}
 		case "toc":
 			// Generated client-side from headings; nothing meaningful to export.
+		case "subpages":
+			// Generated client-side from the page tree; nothing to export.
 		case "columnList", "column":
 			// Layout containers: flatten children at the SAME depth (an indent
 			// would misread as nesting). Children handled below via the generic
@@ -303,8 +305,9 @@ func safeFilename(name string) string {
 	return name
 }
 
-// collectionMarkdown renders a database page as a Markdown table of its rows.
-func (s *Server) collectionMarkdown(p *page) (string, error) {
+// collectionMarkdown renders a database page as a Markdown table of the rows
+// userID may read. "" is an anonymous visitor of a shared link.
+func (s *Server) collectionMarkdown(p *page, userID string) (string, error) {
 	var schemaJSON string
 	if err := s.db.QueryRow(`SELECT schema FROM collections WHERE page_id = ?`, p.ID).Scan(&schemaJSON); err != nil {
 		return pageMarkdown(p), nil
@@ -342,7 +345,9 @@ func (s *Server) collectionMarkdown(p *page) (string, error) {
 	}
 	b.WriteString("\n")
 
-	rows, err := s.db.Query(`SELECT title, props FROM pages WHERE parent_id = ? AND trashed_at IS NULL ORDER BY position, created_at`, p.ID)
+	rule, ruleArgs := s.privateRowRule(userID, p.ID)
+	rows, err := s.db.Query(`SELECT title, props FROM pages WHERE parent_id = ? AND trashed_at IS NULL AND `+rule+` ORDER BY position, created_at`,
+		append([]any{p.ID}, ruleArgs...)...)
 	if err != nil {
 		return "", err
 	}
@@ -421,13 +426,18 @@ func (s *Server) handleExportPage(w http.ResponseWriter, r *http.Request) {
 			w.Write([]byte(s.pageHTML(p, true, opts)))
 		} else {
 			w.Header().Set("Content-Disposition", mime.FormatMediaType("attachment", map[string]string{"filename": safeFilename(p.Title) + ".html"}))
-			w.Write([]byte(s.pageHTML(p, false, s.printOptionsFor(p))))
+			document, err := s.portableExportHTML(p, r)
+			if err != nil {
+				httpError(w, 500, "Could not include uploaded images in the export")
+				return
+			}
+			w.Write([]byte(document))
 		}
 		return
 	}
 	md := ""
 	if p.Type == "collection" {
-		md, err = s.collectionMarkdown(p)
+		md, err = s.collectionMarkdown(p, requestUser(r).ID)
 		if err != nil {
 			httpError(w, 500, err.Error())
 			return

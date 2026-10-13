@@ -4,6 +4,7 @@ import { Table2 } from 'lucide-react';
 import { useBlockCtx } from './blockContext';
 import { MERMAID_REV, renderMermaid } from './mermaidLoader';
 import { PageIcon } from './pageIcon';
+import { openPage, openPageAux } from './pageOpen';
 import CollectionView, { type EmbedState } from './components/CollectionView';
 import { plural, t } from './i18n';
 
@@ -140,6 +141,45 @@ export const tocSpec = createReactBlockSpec(
               }}
             >
               {e.text}
+            </button>
+          ))}
+        </div>
+      );
+    },
+  },
+);
+
+// ---- Sub-pages ----
+// The page's direct children as an inline block, next to Contents. The same
+// data the Structure panel shows, but placed by the author in the document.
+export const subpagesSpec = createReactBlockSpec(
+  {
+    type: 'subpages',
+    propSchema: {},
+    content: 'none',
+  } as const,
+  {
+    render: () => {
+      const { pagesById, pageId, onNavigate, onOpenInNewTab } = useBlockCtx();
+      if (!pageId) return null;
+      const openers = { onNavigate, onOpenInNewTab };
+      const kids = [...pagesById.values()]
+        .filter((p) => p.parentId === pageId && !p.trashed)
+        .sort((a, b) => (a.position ?? 0) - (b.position ?? 0));
+      return (
+        <div className="bn-toc bn-subpages" contentEditable={false}>
+          <div className="bn-toc-title">{t('Sub-pages')}</div>
+          {kids.length === 0 && <div className="bn-toc-empty">{t('No sub-pages')}</div>}
+          {kids.map((p) => (
+            <button
+              key={p.id}
+              type="button"
+              className="bn-toc-entry"
+              onClick={(e) => openPage(e, p.id, openers)}
+              onAuxClick={(e) => openPageAux(e, p.id, openers)}
+              title={p.title || t('Untitled')}
+            >
+              <PageIcon icon={p.icon} size={14} /> {p.title || t('Untitled')}
             </button>
           ))}
         </div>
@@ -300,7 +340,7 @@ export const databaseSpec = createReactBlockSpec(
       const { block, editor } = props;
       const collectionId = (block.props as { collectionId: string }).collectionId;
       const localRaw = (block.props as { local?: string }).local ?? '';
-      const { pagesById, tagColors, onNavigate, onPagesChanged } = useBlockCtx();
+      const { pagesById, tagColors, onNavigate, onOpenInNewTab, onPagesChanged } = useBlockCtx();
       const [q, setQ] = useState('');
       // Somebody who may read the document but not change it can still filter
       // what they see; it just stays with them instead of being written back.
@@ -370,6 +410,7 @@ export const databaseSpec = createReactBlockSpec(
             pages={pagesById}
             tagColors={tagColors}
             onNavigate={onNavigate}
+            onOpenInNewTab={onOpenInNewTab}
             onPagesChanged={onPagesChanged}
             embed={embed}
           />

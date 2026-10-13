@@ -60,7 +60,7 @@ func (s *Server) moveSubtreeToWorkspace(userID, pageID, targetWS string, tokenOK
 	// stop and say why.
 	for _, id := range ids {
 		if !s.canRead(userID, id) {
-			return 0, fmt.Errorf("this subtree contains private pages owned by someone else — they cannot be moved along")
+			return 0, fmt.Errorf("this subtree contains private pages owned by someone else. They cannot be moved along")
 		}
 	}
 

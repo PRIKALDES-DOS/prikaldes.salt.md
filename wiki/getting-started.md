@@ -142,9 +142,9 @@ consistent snapshot rather than copying files, so nothing is caught mid-write.
 `salt restore` and `salt fix-notion-rows` take the database for themselves; stop
 the server before either.
 
-**It is `salt version`, not `salt --version`.** An unrecognised argument is not
-an error: the program falls through and starts a server, which on a machine
-already running one means a second process fighting for the same files.
+**It is `salt version`, not `salt --version`.** An unrecognised command or flag
+prints an error and usage to stderr and exits with status 2. It does not start
+a server or open the database.
 
 `GET /api/health` answers `{"status":"ok","version":"…"}` and needs no
 credential. It pings the database, so it tells a live-but-broken instance apart
@@ -178,7 +178,7 @@ creates the account; the other is told *setup already completed*.
 The theme switch in the top right corner of the screen works before you
 have an account: **Light**, **Automatic (follows the system)**, **Dark**. So
 does the language: the interface takes it from your browser, and today there are
-two catalogues, English and German.
+three catalogues, English, German and Spanish.
 
 The two are remembered in different places, which matters the moment you use a
 second device. **The language lives on your account** once you are signed in,

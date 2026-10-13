@@ -41,6 +41,10 @@ type pageMeta struct {
 	TrashedAt      string `json:"trashedAt,omitempty"`
 	TrashedBy      string `json:"trashedBy,omitempty"`
 	TrashedByAgent bool   `json:"trashedByAgent,omitempty"`
+	// Whether the page currently carries a live public link (read-share or
+	// form-share, unexpired). Computed per listing from share_links — pages
+	// carry no flag of their own, so there is nothing to keep in sync.
+	Shared bool `json:"shared,omitempty"`
 }
 
 type page struct {
@@ -135,6 +139,7 @@ func (s *Server) handleListPages(w http.ResponseWriter, r *http.Request) {
 	}
 	list = s.filterReadable(requestUser(r).ID, list)
 	s.attachTrashers(list)
+	s.markShared(list)
 	writeJSON(w, list)
 }
 
@@ -212,7 +217,61 @@ func (s *Server) handleGetPage(w http.ResponseWriter, r *http.Request) {
 	}
 	// A database row opened as a page must show the same numbers its card shows.
 	s.fillDerivedForPage(requestUser(r), p)
+	if s.liveShared([]string{p.ID})[p.ID] {
+		p.Shared = true
+	}
 	writeJSON(w, p)
+}
+
+// liveShared reports which of the given pages carry a live public read link.
+// share_links is the only source of truth (pages carry no flag of their own),
+// so this is one extra query per listing, not a column to keep in sync.
+//
+// A form link does not count. It publishes a way to add rows, not the rows,
+// and the marker would invite a click on the globe that publishes them.
+//
+// The ids go in chunks: a listing can hold more pages than SQLite takes
+// parameters in one statement, and a failed query here would only make every
+// marker vanish without a word.
+func (s *Server) liveShared(ids []string) map[string]bool {
+	live := map[string]bool{}
+	for start := 0; start < len(ids); start += 500 {
+		chunk := ids[start:min(start+500, len(ids))]
+		args := make([]any, 0, len(chunk)+1)
+		for _, id := range chunk {
+			args = append(args, id)
+		}
+		args = append(args, now())
+		rows, err := s.db.Query(`SELECT DISTINCT page_id FROM share_links WHERE page_id IN (`+placeholders(len(chunk))+`)
+			AND mode != 'form' AND (expires_at IS NULL OR expires_at = '' OR expires_at > ?)`, args...)
+		if err != nil {
+			return live
+		}
+		for rows.Next() {
+			var id string
+			if rows.Scan(&id) == nil {
+				live[id] = true
+			}
+		}
+		rows.Close()
+	}
+	return live
+}
+
+func (s *Server) markShared(list []pageMeta) {
+	if len(list) == 0 {
+		return
+	}
+	ids := make([]string, len(list))
+	for i, m := range list {
+		ids[i] = m.ID
+	}
+	live := s.liveShared(ids)
+	for i := range list {
+		if live[list[i].ID] {
+			list[i].Shared = true
+		}
+	}
 }
 
 func (s *Server) handleCreatePage(w http.ResponseWriter, r *http.Request) {
@@ -1148,7 +1207,7 @@ func (s *Server) handleUpload(w http.ResponseWriter, r *http.Request) {
 		// can show a precise message.
 		var tooLarge *http.MaxBytesError
 		if errors.As(err, &tooLarge) || strings.Contains(err.Error(), "too large") {
-			httpError(w, http.StatusRequestEntityTooLarge, fmt.Sprintf("file too large — max %d MB", maxUploadSize>>20))
+			httpError(w, http.StatusRequestEntityTooLarge, fmt.Sprintf("file too large: max %d MB", maxUploadSize>>20))
 		} else {
 			httpError(w, 400, "upload malformed")
 		}

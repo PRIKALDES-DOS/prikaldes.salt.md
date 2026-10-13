@@ -209,7 +209,7 @@ are the calls that hand you a document:
 Failures carry an English sentence and, usually, a machine-readable code:
 
 ```json
-{ "error": "This action requires signing in through a browser — an API token is not enough.",
+{ "error": "This action requires signing in through a browser. An API token is not enough.",
   "code": "session_required" }
 ```
 
@@ -365,7 +365,20 @@ GET /api/collections/{id}/rows?filter={"property":"due","op":"between","value":"
 
 `values` replaces `value` for `is` / `is_not` and means *any of* / *none of*.
 `value2` is the upper bound of `between`, inclusive; without it the condition
-does nothing. `sort` is
+does nothing.
+
+Conditions can also be combined with OR. `filter_group` is repeatable too, and
+each one is a JSON array of conditions in the object spelling: the conditions
+inside one group must all hold, and a row needs to pass only one group. Every
+`filter` holds on top of that, so the two together read "this AND (that OR
+those)". A group without one complete condition is ignored:
+
+```
+GET /api/collections/{id}/rows?filter=status:is_not:done&filter_group=[{"property":"owner","op":"is","value":"ada"}]&filter_group=[{"property":"due","op":"lt","value":"2026-04-01"}]
+```
+
+A saved view keeps flat filters only, because that is all the interface shows.
+`sort` is
 `prop:asc` or `prop:desc`. The answer is
 `{"rows": […], "total": n, "offset": …, "limit": …}`, where `total` counts the
 whole filtered set, not the page. Rollups, formulas and backrelations are filled

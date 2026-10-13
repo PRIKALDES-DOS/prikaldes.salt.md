@@ -381,7 +381,7 @@ func (s *Server) handleAuditRevert(w http.ResponseWriter, r *http.Request) {
 		s.pagesChanged()
 		s.rowChanged(pageID)
 		s.audit("human", u.ID, u.Name, "revert_change", pageID, s.pageWorkspace(pageID),
-			fmt.Sprintf("%s — %s", s.pageTitle(pageID), strings.Join(reverted, ", ")))
+			fmt.Sprintf("%s: %s", s.pageTitle(pageID), strings.Join(reverted, ", ")))
 	}
 	writeJSON(w, map[string]any{"reverted": reverted, "skipped": skipped})
 }

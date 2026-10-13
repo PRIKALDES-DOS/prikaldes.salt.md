@@ -35,7 +35,7 @@ import { usePeers, setPeers, clearPeers } from '../presence';
 import { tagColorClass, TAG_PALETTE } from '../tags';
 import { collectTags, suggestTags } from '../tagSuggest';
 import { modalOpen, useMenuDismiss } from '../modal';
-import { Menu, Star, Lock, LockOpen, Globe, MessageSquare, History, MoreHorizontal, Printer, FileCode, FileText, Upload, AlignLeft, Check, Image as ImageIcon , Smile, PanelRight, Link2, Trash2, FilePlus2, Columns2, Workflow} from 'lucide-react';
+import { Menu, Copy, Star, Lock, LockOpen, Globe, MessageSquare, History, MoreHorizontal, Printer, FileCode, FileText, Upload, AlignLeft, Check, Image as ImageIcon , Smile, PanelRight, Link2, Trash2, FilePlus2, Columns2, Workflow} from 'lucide-react';
 import { blockTypeFor, carriesExternalFiles } from '../dropFiles';
 
 export interface EditorProps {
@@ -52,6 +52,7 @@ export interface EditorProps {
   onMetaChange: (id: string, patch: Partial<PageMeta>) => void;
   onMissing: (id: string) => void;
   onNavigate: (id: string | null) => void;
+  onOpenInNewTab: (id: string) => void;
   onCreatePage: (parentId: string | null, type?: 'doc' | 'collection') => void;
   // Deleting was reachable from the sidebar tree only. A database ROW — and any
   // page filed under one — never appears there as a tree item, so nothing in the
@@ -202,6 +203,7 @@ export default function Editor(props: EditorProps) {
             pages={props.pagesById}
             tagColors={props.tagColors}
             onNavigate={props.onNavigate}
+            onOpenInNewTab={props.onOpenInNewTab}
             onPagesChanged={props.onPagesChanged}
           />
         ) : (
@@ -215,6 +217,7 @@ export default function Editor(props: EditorProps) {
             pagesById={props.pagesById}
             tagColors={props.tagColors}
             onNavigate={props.onNavigate}
+            onOpenInNewTab={props.onOpenInNewTab}
             onCreatePage={props.onCreatePage}
             onPagesChanged={props.onPagesChanged}
             onReset={() => setNonce((n) => n + 1)}
@@ -490,6 +493,19 @@ function PageHeader({
   const [visibility, setVisibility] = useState(page.visibility);
   const [shareUrl, setShareUrl] = useState<string | null>(null);
   const [shareOpen, setShareOpen] = useState(false);
+  const [shareCopied, setShareCopied] = useState(false);
+  useEffect(() => { if (!shareCopied) return; const timer = setTimeout(() => setShareCopied(false), 1600); return () => clearTimeout(timer); }, [shareCopied]);
+  // The server's shared flag survives navigation; the local states do not, so
+  // both are reset here. shareOff masks a just-revoked link the list still
+  // reports until it reloads.
+  const [shareOff, setShareOff] = useState(false);
+  useEffect(() => {
+    setShareUrl(null);
+    setShareCopied(false);
+    setShareOff(false);
+    setShareOpen(false);
+  }, [pageId]);
+  const isShared = shareUrl != null || (!!page.shared && !shareOff);
   const [shareExpiry, setShareExpiry] = useState(0); // days; 0 = never
   const [sharePassword, setSharePassword] = useState('');
   const [overflowOpen, setOverflowOpen] = useState(false);
@@ -633,15 +649,22 @@ function PageHeader({
     try {
       const res = await api.sharePage(pageId, days, password);
       // Absolute URL on the external domain when configured; else current origin.
+      setShareCopied(false);
       setShareUrl(res.url.startsWith('http') ? res.url : location.origin + res.url);
+      setShareOff(false);
+      onPagesChanged();
     } catch {
       toast(t('Sharing failed'));
     }
   };
 
+  // Opening the menu publishes a page that is not shared yet. A page that is
+  // keeps its link: the server stores only a hash of the token, so the address
+  // cannot be shown again, and minting a new one on open broke it for everyone
+  // who had it. The globe marker made exactly that click the inviting one.
   const openShare = async () => {
     setShareOpen((o) => !o);
-    if (!shareUrl) await createShare(shareExpiry, sharePassword);
+    if (!shareUrl && !isShared) await createShare(shareExpiry, sharePassword);
   };
 
   const changeExpiry = async (days: number) => {
@@ -653,7 +676,10 @@ function PageHeader({
   const stopShare = async () => {
     await api.unsharePage(pageId).catch(() => {});
     setShareUrl(null);
+    setShareCopied(false);
+    setShareOff(true);
     setShareOpen(false);
+    onPagesChanged();
   };
 
   const saveMeta = (patch: { title?: string; icon?: string; cover?: string; tags?: string[]; description?: string }) => {
@@ -846,21 +872,43 @@ function PageHeader({
           </button>
           <button
             className={'icon-btn topbar-wide-only' + (visibility === 'private' ? ' active-star' : '')}
-            title={visibility === 'private' ? t('Private (only you) — click to share with the workspace') : t('Visible to the workspace — click to make it private')}
+            title={visibility === 'private' ? t('Private (only you): click to share with the workspace') : t('Visible to the workspace: click to make it private')}
             onClick={togglePrivate}
           >
             {visibility === 'private' ? <Lock size={17} /> : <LockOpen size={17} />}
           </button>
           <div className="share-wrap" ref={shareWrapRef}>
-            <button className="icon-btn topbar-wide-only" title={t('Share to web (read-only link)')} onClick={openShare}>
+            <button className={'icon-btn topbar-wide-only' + (isShared ? ' shared-active' : '')} title={isShared ? t('Shared') : t('Share to web (read-only link)')} onClick={openShare}>
               <Globe size={17} />
             </button>
-            {shareOpen && (
+            {shareOpen && !shareUrl && isShared && (
               <div className="menu share-menu">
-                <div className="share-hint">Anyone with this link can view this page (read-only).</div>
-                <input className="share-input" readOnly value={shareUrl ?? 'Creating…'} onFocus={(e) => e.currentTarget.select()} />
+                <div className="share-hint">
+                  {t('This page is shared publicly. Its address was only shown when the link was made.')}
+                </div>
+                <div className="share-hint">{t('A new link stops the old one from working.')}</div>
+                <div className="share-actions">
+                  <button className="btn-sm" onClick={() => void createShare(shareExpiry, sharePassword)}>
+                    {t('New link')}
+                  </button>
+                  <button className="btn-sm danger" onClick={stopShare}>
+                    {t('Stop sharing')}
+                  </button>
+                </div>
+              </div>
+            )}
+            {shareOpen && (shareUrl || !isShared) && (
+              <div className="menu share-menu">
+                <div className="share-hint">{t('Anyone with this link can view this page (read-only).')}</div>
+                <div className="share-link-row">
+                  <input className="share-input" readOnly aria-label={t('Public link')} value={shareUrl ?? t('Creating…')} onFocus={(e) => e.currentTarget.select()} />
+                  <button className="icon-btn share-copy" disabled={!shareUrl} title={t(shareCopied ? 'Copied' : 'Copy link')} aria-label={t(shareCopied ? 'Copied' : 'Copy link')} onClick={async () => { if (!shareUrl) return; try { await navigator.clipboard.writeText(shareUrl); setShareCopied(true); } catch { toast(t('Copy failed; select the link')); } }}>
+                    {shareCopied ? <Check size={16} /> : <Copy size={16} />}
+                  </button>
+                  <span className="share-copy-status" role="status">{shareCopied ? t('Copied') : ''}</span>
+                </div>
                 <label className="share-expiry">
-                  Expires:
+                  {t('Expires:')}
                   <select
                     className="prop-select"
                     value={shareExpiry}
@@ -881,12 +929,6 @@ function PageHeader({
                   onBlur={() => void createShare(shareExpiry, sharePassword)}
                 />
                 <div className="share-actions">
-                  <button
-                    className="btn-sm"
-                    onClick={() => shareUrl && void navigator.clipboard.writeText(shareUrl)}
-                  >
-                    {t('Copy')}
-                  </button>
                   <button className="btn-sm danger" onClick={stopShare}>
                     {t('Stop sharing')}
                   </button>
@@ -1358,6 +1400,7 @@ interface CollabProps {
   pagesById: Map<string, PageMeta>;
   tagColors: Record<string, string>;
   onNavigate: (id: string | null) => void;
+  onOpenInNewTab: (id: string) => void;
   onCreatePage: (parentId: string | null, type?: 'doc' | 'collection') => void;
   onPagesChanged: () => void;
   onReset: () => void;
@@ -1469,6 +1512,7 @@ function BlockContent({
   pagesById,
   tagColors,
   onNavigate,
+  onOpenInNewTab,
   onCreatePage,
   onPagesChanged,
   structureOpen,
@@ -1484,6 +1528,7 @@ function BlockContent({
   pagesById: Map<string, PageMeta>;
   tagColors: Record<string, string>;
   onNavigate: (id: string | null) => void;
+  onOpenInNewTab: (id: string) => void;
   onCreatePage: (parentId: string | null, type?: 'doc' | 'collection') => void;
   onPagesChanged: () => void;
 }) {
@@ -1629,6 +1674,14 @@ function BlockContent({
         group: 'Basic blocks',
         icon: <span>📑</span>,
         onItemClick: () => insertOrUpdateBlockForSlashMenu(editor, { type: 'toc' } as never),
+      },
+      {
+        title: t('Sub-pages'),
+        subtext: t('List of pages below this one'),
+        aliases: ['subpages', 'unterseiten', 'children', 'sub-pages'], // i18n-ok: search aliases, deliberately multilingual so a German user can type it
+        group: 'Basic blocks',
+        icon: <span>📄</span>,
+        onItemClick: () => insertOrUpdateBlockForSlashMenu(editor, { type: 'subpages' } as never),
       },
     ];
     return filterSuggestionItems(
@@ -1906,7 +1959,7 @@ function BlockContent({
       <div className="editor-inner" onClickCapture={onFileClick}>
         {/* The database block renders inside the editor and would otherwise
             not reach the page list, the tag colours or navigation. */}
-        <BlockContext.Provider value={{ pagesById, tagColors, onNavigate, onPagesChanged }}>
+        <BlockContext.Provider value={{ pagesById, tagColors, onNavigate, onOpenInNewTab, onPagesChanged, pageId: provider.pageId }}>
         <BlockNoteView editor={editor} theme={theme} editable={canEdit} slashMenu={false}>
           <SuggestionMenuController triggerCharacter="/" getItems={getSlashItems} />
           <SuggestionMenuController

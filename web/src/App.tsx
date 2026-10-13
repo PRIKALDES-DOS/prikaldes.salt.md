@@ -1,5 +1,5 @@
 import { useCallback, useEffect, useMemo, useRef, useState } from 'react';
-import { api } from './api';
+import { api, ApiError } from './api';
 import { serverMessage } from './serverErrors';
 import { WifiOff } from 'lucide-react';
 import type { Me, PageMeta, User, Workspace } from './types';
@@ -151,6 +151,13 @@ export default function App() {
       /* best-effort persistence */
     }
   }, [openTabs]);
+  // Page metas for open tabs that /api/pages does not carry — a database ROW is
+  // excluded from that list, so without this its chip has no title and the
+  // "alive" filter below would drop the tab the moment it stopped being active,
+  // which is what made a row impossible to keep open in a second tab. Fetched
+  // once per id (see the resolver below) and forgotten when its tab closes.
+  const [extraPages, setExtraPages] = useState<Map<string, PageMeta>>(() => new Map());
+  const resolvingRef = useRef<Set<string>>(new Set());
   const [searchOpen, setSearchOpen] = useState(false);
   const [helpOpen, setHelpOpen] = useState(false);
   const [indexOpen, setIndexOpen] = useState(false);
@@ -339,7 +346,7 @@ export default function App() {
         // here too, one frame later (W112).
         if (m.authenticated && m.prefs) void applyPrefs(m.prefs);
         if (m.version && m.version !== BUILD_VERSION) {
-          toast(t('A new version is available — reload the page'));
+          toast(t('A new version is available: reload the page'));
         }
         if (m.authenticated) void loadAll();
       })
@@ -623,7 +630,7 @@ export default function App() {
         };
         if (msg.type === 'hello' && msg.version && msg.version !== BUILD_VERSION && !warnedVersion) {
           warnedVersion = true;
-          toast(t('A new version is available — reload the page'));
+          toast(t('A new version is available: reload the page'));
         }
         if (msg.type === 'pages') {
           window.clearTimeout(reloadTimer.current);
@@ -745,6 +752,14 @@ export default function App() {
     if (i < 0) return;
     const next = prev.filter((x) => x !== id);
     setOpenTabs(next);
+    // A row's meta was fetched for its tab alone; the tab is gone, so is the
+    // reason to keep it.
+    setExtraPages((p) => {
+      if (!p.has(id)) return p;
+      const n = new Map(p);
+      n.delete(id);
+      return n;
+    });
     if (activeRef.current === id) {
       const neighbour = next[i] ?? next[i - 1] ?? null;
       pushTabHistory(next, neighbour, true);
@@ -787,19 +802,57 @@ export default function App() {
   // are deliberately excluded from /api/pages, so clicking one must NOT be
   // treated as an invalid selection (that caused a jump back to the home page).
   // Genuinely-gone pages are handled by the editor's onMissing callback.
-  // Keep a tab only if its page is live in the tree, or it is the active page.
-  // This drops trashed pages and stale ids left in localStorage (e.g. pages
-  // deleted in another session), so no "Untitled" ghost tabs accumulate. The
-  // trade-off: a database row (absent from /api/pages) survives only while it
-  // is the active tab — an accepted minor limitation, not data loss.
+  // Keep a tab only if its page is live in the tree, or it is the active page,
+  // or it is an id the tree cannot answer for. That last case matters now that a
+  // board card can open in a second tab: a database ROW is not in /api/pages, so
+  // testing its tab by absence alone would drop it the moment it stopped being
+  // active. Such an id is left alone here and settled by the resolver below,
+  // which closes it only when the server says the page is really gone. The
+  // trade-off: a stale id from localStorage lives a little longer (a request)
+  // instead of vanishing on faith. Pages that ARE in the tree still drop the
+  // moment they are trashed, and handleMissing closes deleted ones.
   useEffect(() => {
     if (!pages) return;
-    const alive = new Set(pages.filter((p) => !p.trashed).map((p) => p.id));
+    const known = new Map(pages.map((p) => [p.id, p]));
     setOpenTabs((prev) => {
-      const next = prev.filter((id) => alive.has(id) || id === currentId);
+      const next = prev.filter((id) => {
+        const p = known.get(id);
+        return p ? !p.trashed || id === currentId : true;
+      });
       return next.length === prev.length && next.every((v, i) => v === prev[i]) ? prev : next;
     });
   }, [pages, currentId]);
+
+  // Resolve every open tab the page list does not know about: a deferred
+  // database row comes back with its title and icon, and anything the server no
+  // longer has (a stale id, a row deleted or trashed in another session) closes
+  // its tab rather than lingering as "Untitled".
+  useEffect(() => {
+    if (!pages) return;
+    const known = new Set(pages.map((p) => p.id));
+    for (const id of openTabs) {
+      if (known.has(id) || extraPages.has(id) || resolvingRef.current.has(id)) continue;
+      resolvingRef.current.add(id);
+      void api
+        .getPage(id)
+        .then((p) => {
+          if (p.trashed) {
+            closeTab(id);
+            return;
+          }
+          if (tabsRef.current.includes(id)) {
+            setExtraPages((prev) => (prev.has(id) ? prev : new Map(prev).set(id, p)));
+          }
+        })
+        .catch((e) => {
+          // A page the server no longer has (or will not show) closes its tab; a
+          // transient failure just leaves it for the next run to retry, rather
+          // than throwing a tab away over a blip.
+          if (e instanceof ApiError && e.status === 404) closeTab(id);
+        })
+        .finally(() => resolvingRef.current.delete(id));
+    }
+  }, [pages, openTabs, extraPages, closeTab]);
 
   useEffect(() => {
     if (!pages) return;
@@ -859,6 +912,15 @@ export default function App() {
 
   const updateMeta = useCallback((id: string, patch: Partial<PageMeta>) => {
     setPages((prev) => prev?.map((p) => (p.id === id ? { ...p, ...patch } : p)) ?? prev);
+    // A row opened in its own tab is not in the page list, so its tab title
+    // would keep the old name after a rename.
+    setExtraPages((prev) => {
+      const p = prev.get(id);
+      if (!p) return prev;
+      const next = new Map(prev);
+      next.set(id, { ...p, ...patch });
+      return next;
+    });
   }, []);
 
   // Import for the empty-state (no pages yet). The primary import entry point is
@@ -972,10 +1034,13 @@ export default function App() {
     [loadPages, closeTab],
   );
 
-  const pagesById = useMemo(
-    () => new Map((pages ?? []).map((p) => [p.id, p])),
-    [pages],
-  );
+  const pagesById = useMemo(() => {
+    const m = new Map((pages ?? []).map((p) => [p.id, p]));
+    // Row metas first fetched for a tab (see extraPages). Only a fallback: the
+    // tree's own copy wins if the id is there too.
+    for (const [id, p] of extraPages) if (!m.has(id)) m.set(id, p);
+    return m;
+  }, [pages, extraPages]);
 
   // A viewer (read-only workspace role) may not edit; the doc editor renders
   // read-only so a viewer isn't teased with an editable-looking page whose
@@ -1146,6 +1211,7 @@ export default function App() {
               tagFilter={notesTag}
               onClearTag={() => setNotesTag(null)}
               onNavigate={navigate}
+              onOpenInNewTab={openInNewTab}
               onCreate={() => void createPage(null)}
             />
           ) : undefined
@@ -1167,6 +1233,7 @@ export default function App() {
           tagFilter={notesTag}
           onClearTag={() => setNotesTag(null)}
           onNavigate={navigate}
+          onOpenInNewTab={openInNewTab}
           onCreate={() => void createPage(null)}
         />
       )}
@@ -1207,6 +1274,7 @@ export default function App() {
               onMetaChange={updateMeta}
               onMissing={handleMissing}
               onNavigate={navigate}
+              onOpenInNewTab={openInNewTab}
               onCreatePage={createPage}
               onTrash={trashPage}
               onPagesChanged={loadPages}
@@ -1226,7 +1294,7 @@ export default function App() {
             <h2>{t('No workspace')}</h2>
             <p>
               {t(
-                'Your account currently belongs to no workspace. Ask an admin for access — or create one of your own, if this instance allows it.',
+                'Your account currently belongs to no workspace. Ask an admin for access, or create one of your own, if this instance allows it.',
               )}
             </p>
             {me?.allowUserWorkspaces && (
@@ -1261,7 +1329,7 @@ export default function App() {
             </button>
             <div className="empty-emoji"><Logo size={52} /></div>
             <h2>{t('No pages yet')}</h2>
-            <p>{t('Create your first page — or import from Notion (.zip) / Markdown (.md).')}</p>
+            <p>{t('Create your first page, or import from Notion (.zip) / Markdown (.md).')}</p>
             <div className="empty-actions">
               <button className="btn primary" onClick={() => void createPage(null)}>
                 {t('New page')}
@@ -1316,7 +1384,7 @@ export default function App() {
           }}
         >
           <WifiOff size={13} />
-          {t('Not receiving live updates — reconnect')}
+          {t('Not receiving live updates: reconnect')}
         </button>
       )}
       {toaster}

@@ -288,7 +288,7 @@ func (s *Server) importWorkspaceArchive(u *user, data []byte, opt importOptions)
 func (s *Server) importWorkspaceFS(u *user, fsys fs.FS, opt importOptions) (*importResult, error) {
 	// The same rule as when creating a workspace.
 	if !u.IsAdmin && !s.loadSettings().AllowUserWorkspaces {
-		return nil, coded("workspaces_disabled", "creating workspaces is disabled on this instance — ask an admin")
+		return nil, coded("workspaces_disabled", "creating workspaces is disabled on this instance. Ask an admin")
 	}
 	readEntry := func(name string) []byte {
 		b, err := fs.ReadFile(fsys, name)
@@ -304,7 +304,7 @@ func (s *Server) importWorkspaceFS(u *user, fsys fs.FS, opt importOptions) (*imp
 	}
 	if manifest.Format > transferFormat {
 		return nil, coded("archive_too_new",
-			fmt.Sprintf("archive format %d is newer than this instance supports (%d) — update salt.md", manifest.Format, transferFormat))
+			fmt.Sprintf("archive format %d is newer than this instance supports (%d). Update salt.md", manifest.Format, transferFormat))
 	}
 	var pages []transferPage
 	if b := readEntry("pages.json"); b == nil || json.Unmarshal(b, &pages) != nil {
