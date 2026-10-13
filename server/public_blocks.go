@@ -81,20 +81,28 @@ func publicBlocksHTML(content []byte) string {
 	out.WriteString(`</div>`)
 	return out.String()
 }
+
 // The per-page budget bounds repeated TOCs, not just each individual block.
 type publicRenderContext struct {
-	headings []publicBlock
+	headings   []publicBlock
 	tocEntries int
 }
+
 func (c *publicRenderContext) collectHeadings(blocks []publicBlock) {
 	for _, b := range blocks {
-		if len(c.headings) >= 1000 { return }
+		if len(c.headings) >= 1000 {
+			return
+		}
 		if b.Type == "heading" && b.ID != "" {
 			// A long heading must not defeat the output budget.
 			text := []rune(plainInline(b.Content))
-			if len(text) > 256 { text = text[:256] }
-			b.Content, _ = json.Marshal([]map[string]string{{"type":"text", "text":string(text)}})
-			if len(b.ID) > 256 { b.ID = b.ID[:256] }
+			if len(text) > 256 {
+				text = text[:256]
+			}
+			b.Content, _ = json.Marshal([]map[string]string{{"type": "text", "text": string(text)}})
+			if len(b.ID) > 256 {
+				b.ID = b.ID[:256]
+			}
 			c.headings = append(c.headings, b)
 		}
 		c.collectHeadings(b.Children)
@@ -269,10 +277,14 @@ func renderPublicBlock(out *strings.Builder, b publicBlock, document *publicRend
 	case "database":
 		out.WriteString(`<a href="/p/` + url.PathEscape(strProp(b.Props, "collectionId", "")) + `">▦ Collection</a>`)
 	case "toc":
-		if document.tocEntries >= 1000 { break }
+		if document.tocEntries >= 1000 {
+			break
+		}
 		out.WriteString(`<nav class="bn-toc" aria-label="Table of contents"><div class="bn-toc-title">Table of contents</div>`)
 		for _, h := range document.headings {
-			if document.tocEntries >= 1000 { break }
+			if document.tocEntries >= 1000 {
+				break
+			}
 			out.WriteString(`<a class="bn-toc-entry" href="#block-` + html.EscapeString(h.ID) + `">` + html.EscapeString(plainInline(h.Content)) + `</a>`)
 			document.tocEntries++
 		}
