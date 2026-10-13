@@ -3,6 +3,7 @@ package server
 import (
 	"encoding/json"
 	"testing"
+	"time"
 )
 
 // What a filter means, checked against real rows in a real database.
@@ -60,7 +61,7 @@ func count(t *testing.T, s *Server, col string, f rowFilter) int {
 
 func countGroups(t *testing.T, s *Server, col string, groups [][]rowFilter) int {
 	t.Helper()
-	_, total, err := s.collectionRowsQuery(&user{ID: "u"}, col, nil, groups, "", 100, 0)
+	_, total, err := s.collectionRowsQuery(&user{ID: "u"}, col, nil, groups, "", 100, 0, time.Time{})
 	if err != nil {
 		t.Fatalf("query: %v", err)
 	}
@@ -163,7 +164,7 @@ func TestFlatFilterIsATermOfItsOwn(t *testing.T) {
 	s, col := filterFixture(t)
 	query := func(flat []rowFilter, groups [][]rowFilter) int {
 		t.Helper()
-		_, total, err := s.collectionRowsQuery(&user{ID: "u"}, col, flat, groups, "", 100, 0)
+		_, total, err := s.collectionRowsQuery(&user{ID: "u"}, col, flat, groups, "", 100, 0, time.Time{})
 		if err != nil {
 			t.Fatalf("query: %v", err)
 		}

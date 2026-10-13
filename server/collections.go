@@ -6,6 +6,7 @@ import (
 	"net/http"
 	"strconv"
 	"strings"
+	"time"
 )
 
 // A collection turns a page into a small database: its child pages are the
@@ -195,6 +196,23 @@ func (f rowFilter) where() (string, []any) {
 		}
 	}
 	vals := f.vals()
+	// A half-typed relative day ("today-") is not a value yet. Comparing it
+	// literally would empty the table mid-keystroke, so the condition waits
+	// instead, under the same rule the interface applies before sending (see
+	// filterIsArmed). Finished words on non-date properties still compare
+	// literally; only the dangling sign is special.
+	if op != "is_empty" && op != "is_not_empty" {
+		if isUnfinishedRelativeDay(f.Value) || isUnfinishedRelativeDay(f.Value2) {
+			return "", nil
+		}
+		kept := make([]string, 0, len(vals))
+		for _, v := range vals {
+			if !isUnfinishedRelativeDay(v) {
+				kept = append(kept, v)
+			}
+		}
+		vals = kept
+	}
 	// A condition with nothing to compare against does not filter. It used
 	// to compare with the empty string and therefore match nothing, so the
 	// moment you added "Date is …" the table went blank before you had
@@ -258,7 +276,24 @@ func (f rowFilter) where() (string, []any) {
 // flat is ANDed as it stands; groups are ORed, the conditions inside one group
 // ANDed, and the two together read "this AND (that OR those)". A group with no
 // complete condition constrains nothing.
-func (s *Server) collectionRowsQuery(u *user, colID string, flat []rowFilter, groups [][]rowFilter, sortParam string, limit, offset int) (list []map[string]any, total int, err error) {
+//
+// today is the day relative date words ("today", "today-1M") resolve against:
+// the viewer's day, sent by the interface with every query. Zero means the
+// caller does not know it (agents, old clients) and the server's day applies.
+func (s *Server) collectionRowsQuery(u *user, colID string, flat []rowFilter, groups [][]rowFilter, sortParam string, limit, offset int, today time.Time) (list []map[string]any, total int, err error) {
+	now := today
+	if now.IsZero() {
+		now = time.Now()
+	}
+	// A relative day names a different date every day. Resolve it now, per
+	// query, so a saved view stays live, and only on date properties (see
+	// resolveSmartDates), so a status option named "Today" keeps working.
+	flat = s.resolveSmartDates(colID, flat, now)
+	resolved := make([][]rowFilter, len(groups))
+	for i, g := range groups {
+		resolved[i] = s.resolveSmartDates(colID, g, now)
+	}
+	groups = resolved
 	where := []string{"parent_id = ?", "trashed_at IS NULL"}
 	args := []any{colID}
 	// Other people's private rows stay out. The condition belongs in the SQL,
@@ -434,7 +469,13 @@ func (s *Server) handleCollectionRows(w http.ResponseWriter, r *http.Request) {
 		}
 		filters = append(filters, rowFilter{Prop: propID, Op: op, Value: value})
 	}
-	list, total, err := s.collectionRowsQuery(requestUser(r), colID, filters, parseFilterGroups(q["filter_group"]), q.Get("sort"), limit, offset)
+	// The viewer's day, so "today" means their today and not the server's.
+	// Misshapen values fall back to the server's day (see parseTodayParam).
+	var today time.Time
+	if day, ok := parseTodayParam(q.Get("today")); ok {
+		today = day
+	}
+	list, total, err := s.collectionRowsQuery(requestUser(r), colID, filters, parseFilterGroups(q["filter_group"]), q.Get("sort"), limit, offset, today)
 	if err != nil {
 		httpError(w, 500, err.Error())
 		return
