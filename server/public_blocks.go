@@ -115,7 +115,7 @@ func publicBlockAttrs(b publicBlock) string {
 	}
 	return attrs
 }
-func renderPublicBlocks(out *strings.Builder, blocks, document *publicRenderContext) {
+func renderPublicBlocks(out *strings.Builder, blocks []publicBlock, document *publicRenderContext) {
 	for i := 0; i < len(blocks); {
 		b := blocks[i]
 		if b.Type == "bulletListItem" || b.Type == "numberedListItem" || b.Type == "checkListItem" {
