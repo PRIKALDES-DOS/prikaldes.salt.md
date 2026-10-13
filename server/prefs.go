@@ -1,7 +1,6 @@
 package server
 
 import (
-	"database/sql"
 	"net/http"
 	"regexp"
 	"strings"
@@ -47,9 +46,9 @@ type userPrefs struct {
 	// "" | "mon" | "sun" | "sat". "" lets the region decide.
 	WeekStart string `json:"weekStart"`
 	// Whether a plain click on a collection row opens it in a NEW tab.
-	// A pointer rather than a bool: absent (nil) means the new default, a new
-	// tab, so accounts from before the setting behave as if it were on without
-	// a migration rewriting every row. Explicit true/false is the choice.
+	// Absent (nil) is automatic, which means off: rows navigate unless the
+	// account explicitly opted in. Stored as "" | "on" | "off", like every
+	// other preference: "" is "never decided" and needs no backfill.
 	OpenRowsNewTab *bool `json:"openRowsNewTab,omitempty"`
 }
 
@@ -112,25 +111,26 @@ func normalizePrefs(p userPrefs) userPrefs {
 // value, which IS automatic — so a caller never has to check.
 func (s *Server) loadPrefs(userID string) userPrefs {
 	var p userPrefs
-	var openRows sql.NullInt64
+	var openRows string
 	s.db.QueryRow(`SELECT pref_language, pref_region, pref_timezone, pref_clock, pref_week_start,
 		pref_open_rows_new_tab FROM users WHERE id = ?`, userID).
 		Scan(&p.Language, &p.Region, &p.TimeZone, &p.Clock, &p.WeekStart, &openRows)
-	// A NULL column is "never decided", which reads as the new default (a new
-	// tab) without storing anything — see the field comment.
-	if openRows.Valid {
-		v := openRows.Int64 != 0
+	// "" is automatic (off); only an explicit "on" opens new tabs. Anything
+	// else, including leftovers from before, reads as the account never
+	// having decided.
+	if openRows == "on" || openRows == "off" {
+		v := openRows == "on"
 		p.OpenRowsNewTab = &v
 	}
 	return p
 }
 
 func (s *Server) savePrefs(userID string, p userPrefs) error {
-	var openRows any
+	openRows := ""
 	if p.OpenRowsNewTab != nil {
-		openRows = 0
+		openRows = "off"
 		if *p.OpenRowsNewTab {
-			openRows = 1
+			openRows = "on"
 		}
 	}
 	_, err := s.db.Exec(`UPDATE users SET pref_language = ?, pref_region = ?,

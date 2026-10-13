@@ -41,11 +41,11 @@ export function openPageAux(
 
 // ---- collection rows ----
 
-// Rows of a collection open in a NEW tab on a plain click — the account's
-// choice (server prefs, default on), not the sidebar's in-place rule above.
-// The modifier inverts: with the setting on, ⌘/Ctrl-click navigates the
-// current tab instead; with it off, everything reads exactly as openPage.
-export const collectionRowNewTab = (): boolean => getPrefs().openRowsNewTab ?? true;
+// Rows follow the sidebar rule: a plain click navigates the current tab,
+// ⌘/Ctrl (or the middle button) adds a tab beside it. The account can opt
+// into always opening rows in a new tab instead (server prefs, default off);
+// the modifier then changes nothing, exactly as in a browser.
+export const collectionRowNewTab = (): boolean => getPrefs().openRowsNewTab === true;
 
 /** A click on a collection row, with or without ⌘/Ctrl. */
 export function openCollectionRow(
@@ -53,7 +53,6 @@ export function openCollectionRow(
   id: string,
   o: PageOpeners,
 ): void {
-  const mod = !!(e.metaKey || e.ctrlKey);
-  if (collectionRowNewTab() ? !mod : mod) open(id, o);
+  if (collectionRowNewTab() || e.metaKey || e.ctrlKey) open(id, o);
   else o.onNavigate(id);
 }

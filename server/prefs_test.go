@@ -89,7 +89,7 @@ func TestNormalizePrefs(t *testing.T) {
 			want: userPrefs{OpenRowsNewTab: boolPtr(false)},
 		},
 		{
-			name: "an absent row-opening choice stays absent (the new default)",
+			name: "an absent row-opening choice stays absent (automatic)",
 			in:   userPrefs{Language: "de"},
 			want: userPrefs{Language: "de"},
 		},

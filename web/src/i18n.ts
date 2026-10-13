@@ -102,9 +102,8 @@ export type Prefs = {
   timeZone?: string;
   clock?: string;
   weekStart?: string;
-  // Collection rows open in a new tab on a plain click. Absent means the new
-  // default, a new tab — see server/prefs.go, which stores NULL for "never
-  // decided" so older accounts need no backfill.
+  // Collection rows open in a new tab on a plain click only when the
+  // account opted in. Absent means automatic, which is off.
   openRowsNewTab?: boolean;
 };
 

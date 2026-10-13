@@ -164,8 +164,8 @@ func TestPutPrefsAnswersWithTheCleanedSet(t *testing.T) {
 }
 
 // The row-opening choice round-trips through the API, and an account that
-// never chose reads as absent (nil) — which the frontend treats as the new
-// default, a new tab, without any backfill.
+// never chose reads as absent (nil): automatic, which means navigation,
+// without any backfill.
 func TestPutPrefsRowOpeningRoundTrip(t *testing.T) {
 	s := testServer(t)
 	uid, cookie := signedIn(t, s, "a@example.com")
