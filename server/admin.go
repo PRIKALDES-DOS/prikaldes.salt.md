@@ -405,7 +405,7 @@ func (s *Server) sendMail(to, subject, body string) error {
 	}
 	host := s.setting("smtp_host", "")
 	if host == "" {
-		return coded("mail_not_configured", "No mail delivery is configured — set up SMTP, or connect Google or Microsoft.")
+		return coded("mail_not_configured", "No mail delivery is configured. Set up SMTP, or connect Google or Microsoft.")
 	}
 	port := s.setting("smtp_port", "587")
 	user := s.setting("smtp_user", "")
@@ -557,11 +557,11 @@ func (s *Server) handleAcceptInvite(w http.ResponseWriter, r *http.Request) {
 		// (deactivating clears the sessions), but this is the one mutating
 		// currentUser site without that check.
 		if cur.Disabled {
-			httpErrorCode(w, http.StatusForbidden, "account_disabled", "This account has been deactivated — talk to an admin.")
+			httpErrorCode(w, http.StatusForbidden, "account_disabled", "This account has been deactivated. Talk to an admin.")
 			return
 		}
 		if email != "" && !strings.EqualFold(email, cur.Email) {
-			httpError(w, 403, "this invite is for a different account — sign out to accept it")
+			httpError(w, 403, "this invite is for a different account. Sign out to accept it")
 			return
 		}
 		s.joinWorkspace(ws, cur.ID, role)
@@ -599,7 +599,7 @@ func (s *Server) handleAcceptInvite(w http.ResponseWriter, r *http.Request) {
 		// not give away whether the address exists. Without this a deactivated account
 		// could get itself a fresh session through an open invitation link.
 		if disabled != 0 {
-			httpErrorCode(w, http.StatusForbidden, "account_disabled", "This account has been deactivated — talk to an admin.")
+			httpErrorCode(w, http.StatusForbidden, "account_disabled", "This account has been deactivated. Talk to an admin.")
 			return
 		}
 		if totpEnabled != 0 {
@@ -608,7 +608,7 @@ func (s *Server) handleAcceptInvite(w http.ResponseWriter, r *http.Request) {
 				return
 			}
 			if !verifyTOTP(totpSecret, body.Code) {
-				httpErrorCode(w, http.StatusUnauthorized, "2fa_invalid", "Wrong code — try again.")
+				httpErrorCode(w, http.StatusUnauthorized, "2fa_invalid", "Wrong code. Try again.")
 				return
 			}
 		}
@@ -700,7 +700,7 @@ func (s *Server) handleSelfSignup(w http.ResponseWriter, r *http.Request) {
 			return
 		}
 	default:
-		httpError(w, 403, "self-registration is disabled — ask an admin for an invite")
+		httpError(w, 403, "self-registration is disabled. Ask an admin for an invite")
 		return
 	}
 	if msg := validateAccount(body.Name, email, body.Password); msg != "" {
@@ -760,7 +760,7 @@ func (s *Server) handle2FASetup(w http.ResponseWriter, r *http.Request) {
 	var enabled int
 	s.db.QueryRow(`SELECT totp_enabled FROM users WHERE id = ?`, u.ID).Scan(&enabled)
 	if enabled != 0 {
-		httpError(w, 409, "2FA is already enabled — disable it first to set up a new device")
+		httpError(w, 409, "2FA is already enabled. Disable it first to set up a new device")
 		return
 	}
 	secret := newTOTPSecret()

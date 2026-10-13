@@ -96,7 +96,7 @@ function ProfileModal({
         onChanged(updated);
       }
       onClose();
-      if (pw) toast(t('Password changed — other sessions were signed out'));
+      if (pw) toast(t('Password changed, other sessions were signed out'));
     } catch (err) {
       toast((err as Error).message || t('Saving failed'));
     } finally {
@@ -297,7 +297,7 @@ export default function UserMenu({ user, onLogout, onUserChanged, onOpenAgents, 
           {onSetFont && (
             <button
               onClick={() => onSetFont(fontPref === 'brand' ? 'system' : 'brand')}
-              title={t('Inter for text, JetBrains Mono for code and labels — the fonts from the website')}
+              title={t('Inter for text, JetBrains Mono for code and labels (the fonts from the website)')}
             >
               <Type size={16} /> {t('Salt fonts')}
               <span className={'mode-dot' + (fontPref === 'brand' ? ' on' : '')} aria-hidden />
@@ -366,7 +366,7 @@ export function ActivityModal({ onClose, pageId, pageTitle }: { onClose: () => v
     try {
       const r = await api.revertChange(id);
       if (r.reverted.length === 0) {
-        toast(t('Nothing was taken back — every value has been changed since.'));
+        toast(t('Nothing was taken back: every value has been changed since.'));
       } else if (r.skipped.length > 0) {
         toast(
           t('{n} taken back, {m} left alone because they changed since.')
@@ -413,8 +413,8 @@ export function ActivityModal({ onClose, pageId, pageTitle }: { onClose: () => v
         <h2>{pageId && pageTitle ? t('Activity: {page}').replace('{page}', pageTitle) : t('Activity log')}</h2>
         <p className="dialog-hint">
           {pageId
-            ? t('Everything that happened to this page — human or agent.')
-            : t('The most recent changes — noting whether a human or an agent made them.')}
+            ? t('Everything that happened to this page (human or agent).')
+            : t('The most recent changes, noting whether a human or an agent made them.')}
         </p>
         <label className="audit-filter">
           <input
@@ -544,7 +544,7 @@ function UsersModal({ me, onClose }: { me: User; onClose: () => void }) {
   // separates controlled access from a quiet back door.
   const requestBreakGlass = async (wsId: string, wsName: string) => {
     setError(null);
-    const reason = await promptText(t('Emergency access to “{name}” — why?', { name: wsName }), {
+    const reason = await promptText(t('Emergency access to “{name}”: why?', { name: wsName }), {
       placeholder: t('e.g. Legal review ref. …, approved by …'),
     });
     if (!reason?.trim()) return;
@@ -552,7 +552,7 @@ function UsersModal({ me, onClose }: { me: User; onClose: () => void }) {
       const res = await api.breakGlass(wsId, reason.trim());
       const until = formatMoment(res.expiresAt, 'time');
       toast(
-        t('Read access to “{name}” until {time} — the people in charge have been told.', {
+        t('Read access to “{name}” until {time}. The people in charge have been told.', {
           name: wsName,
           time: until,
         }),
@@ -650,7 +650,7 @@ function UsersModal({ me, onClose }: { me: User; onClose: () => void }) {
     }
     if (impact?.shared.length) {
       lines.push(
-        t('Kept because others work in them: {list} — this person’s private pages there are deleted.', {
+        t('Kept because others work in them: {list}. This person’s private pages there are deleted.', {
           list: impact.shared
             .map((sw) => `“${sw.name}” (${plural(sw.members, '{n} member', '{n} members')})`)
             .join(', '),
@@ -659,7 +659,7 @@ function UsersModal({ me, onClose }: { me: User; onClose: () => void }) {
     }
     if (impact?.orphaned.length) {
       lines.push(
-        t('Left with nobody in charge: {list} — the owner takes them on.', {
+        t('Left with nobody in charge: {list}. The owner takes them on.', {
           list: impact.orphaned
             .map((o) => `“${o.name}” (${plural(o.pages, '{n} page', '{n} pages')})`)
             .join(', '),
@@ -673,7 +673,7 @@ function UsersModal({ me, onClose }: { me: User; onClose: () => void }) {
         }),
       );
     }
-    lines.push(t('Deactivating is usually enough — nothing is lost that way.'));
+    lines.push(t('Deactivating is usually enough. Nothing is lost that way.'));
     if (
       !(await confirm(t('Permanently delete {name}?', { name: u.name }) + `\n\n${lines.join('\n')}`, {
         danger: true,
@@ -786,7 +786,7 @@ function UsersModal({ me, onClose }: { me: User; onClose: () => void }) {
                     {sel.id !== me.id && sel.orgRole !== 'owner' && me.orgRole !== 'owner' && (
                       <span className="dialog-hint">
                         {t(
-                          'Only the owner can delete permanently — the account would take this person’s personal space with it.',
+                          'Only the owner can delete permanently. The account would take this person’s personal space with it.',
                         )}
                       </span>
                     )}
@@ -801,7 +801,7 @@ function UsersModal({ me, onClose }: { me: User; onClose: () => void }) {
                     )}
                     {sel.orgRole === 'owner' && (
                       <span className="dialog-hint">
-                        {t('The owner runs this instance — their role is not changed here.')}
+                        {t('The owner runs this instance. Their role is not changed here.')}
                       </span>
                     )}
                   </div>
@@ -826,7 +826,7 @@ function UsersModal({ me, onClose }: { me: User; onClose: () => void }) {
                             <button
                               className="btn-sm"
                               title={t(
-                                'Time-limited access with a stated reason — logged and shown to the people in charge',
+                                'Time-limited access with a stated reason, logged and shown to the people in charge',
                               )}
                               onClick={() => void requestBreakGlass(ws.id, ws.name)}
                             >
@@ -917,7 +917,7 @@ function InvitePanel({
         <div className="invite-avatar-placeholder">+</div>
         <div className="users-detail-id">
           <div className="users-detail-name">{t('Create a new user')}</div>
-          <div className="users-detail-email">{t('Creates the account straight away — no email is sent.')}</div>
+          <div className="users-detail-email">{t('Creates the account straight away. No email is sent.')}</div>
         </div>
       </div>
       <label className="profile-label">{t('Name')}</label>
@@ -1028,7 +1028,7 @@ function TokensModal({ onClose }: { onClose: () => void }) {
         </p>
         {fresh && (
           <div className="token-fresh">
-            <div>{t('Copy this token now — it will not be shown again:')}</div>
+            <div>{t('Copy this token now. It will not be shown again:')}</div>
             <code>{fresh}</code>
             <button
               className="btn"
@@ -1040,7 +1040,7 @@ function TokensModal({ onClose }: { onClose: () => void }) {
               {copied === 'token' ? t('Copied ✓') : t('Copy token')}
             </button>
             <div style={{ marginTop: 10 }}>
-              {t('Or connect an agent in one step — paste this into your terminal:')}
+              {t('Or connect an agent in one step. Paste this into your terminal:')}
             </div>
             <code style={{ whiteSpace: 'pre-wrap', wordBreak: 'break-all' }}>{mcpCommand}</code>
             <button

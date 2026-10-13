@@ -24,7 +24,7 @@ func TestPortableExportEmbedsUploadsAndResolvesLinks(t *testing.T) {
 	}
 }
 
-func TestPortableExportRefusesMissingAndEscapingUploads(t *testing.T) {
+func TestPortableExportFallsBackForMissingAndEscapingUploads(t *testing.T) {
 	s := testServer(t)
 	outside := filepath.Join(t.TempDir(), "outside.png")
 	os.WriteFile(outside, []byte("private"), 0600)
@@ -34,13 +34,14 @@ func TestPortableExportRefusesMissingAndEscapingUploads(t *testing.T) {
 	for _, name := range []string{"missing.png", "escape.png"} {
 		content, _ := json.Marshal([]map[string]any{{"type": "image", "props": map[string]any{"url": "/files/" + name}}})
 		p := &page{Content: content}
-		if _, err := s.portableExportHTML(p, httptest.NewRequest("GET", "https://docs.example.test/export", nil)); err == nil {
-			t.Fatalf("accepted %s", name)
+		got, err := s.portableExportHTML(p, httptest.NewRequest("GET", "https://docs.example.test/export", nil))
+		if err != nil || !strings.Contains(got, "https://docs.example.test/files/"+name) || strings.Contains(got, "cHJpdmF0ZQ==") {
+			t.Fatalf("missing safe fallback for %s", name)
 		}
 	}
 }
 
-func TestPortableExportRefusesOversizedUpload(t *testing.T) {
+func TestPortableExportFallsBackForOversizedUpload(t *testing.T) {
 	s := testServer(t)
 	f, err := os.Create(filepath.Join(s.dataDir, "files", "large.png"))
 	if err != nil {
@@ -51,8 +52,9 @@ func TestPortableExportRefusesOversizedUpload(t *testing.T) {
 	}
 	f.Close()
 	p := &page{Content: json.RawMessage(`[{"type":"image","props":{"url":"/files/large.png"}}]`)}
-	if _, err = s.portableExportHTML(p, httptest.NewRequest("GET", "https://docs.example.test/export", nil)); err == nil {
-		t.Fatal("accepted oversized upload")
+	got, err := s.portableExportHTML(p, httptest.NewRequest("GET", "https://docs.example.test/export", nil))
+	if err != nil || !strings.Contains(got, "https://docs.example.test/files/large.png") {
+		t.Fatal("missing oversized upload fallback")
 	}
 }
 
@@ -72,7 +74,8 @@ func TestPortableExportCountsRepeatedImagesAgainstLimit(t *testing.T) {
 	s := testServer(t)
 	seedFile(t, s, "repeat.png", "\x89PNG\r\n\x1a\n"+strings.Repeat("\x00", 12<<20))
 	p := &page{Content: json.RawMessage(`[{"type":"image","props":{"url":"/files/repeat.png"}},{"type":"image","props":{"url":"/files/repeat.png"}},{"type":"image","props":{"url":"/files/repeat.png"}}]`)}
-	if _, err := s.portableExportHTML(p, httptest.NewRequest("GET", "https://docs.example.test/export", nil)); err == nil {
-		t.Fatal("repeated images bypassed total export limit")
+	got, err := s.portableExportHTML(p, httptest.NewRequest("GET", "https://docs.example.test/export", nil))
+	if err != nil || strings.Count(got, "data:image/png;base64,") != 2 || !strings.Contains(got, "https://docs.example.test/files/repeat.png") {
+		t.Fatal("repeated images must fall back after the total limit")
 	}
 }

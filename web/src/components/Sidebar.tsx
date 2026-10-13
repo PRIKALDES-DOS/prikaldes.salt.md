@@ -15,6 +15,7 @@ import { PageIcon } from '../pageIcon';
 import TrashSection from './TrashSection';
 import { compare } from '../format';
 import { plural, t } from '../i18n';
+import { openPage, openPageAux } from '../pageOpen';
 import AgentConnectModal from './AgentConnect';
 import BreakGlassLog from './BreakGlassLog';
 import TemplateGallery from './TemplateGallery';
@@ -24,7 +25,7 @@ import StrandedWorkspaces from './StrandedWorkspaces';
 import { modalOpen, useExclusiveModal, useMenuDismiss } from '../modal';
 import { chordFor, hint, useShortcut } from '../keys';
 import { focusRegion, focusedKey, navItem, useNavRegion, withFocusSurvival } from '../nav';
-import { Sun, Moon, Search, Library, Plus, Table2, FileText, Trash2, LayoutTemplate, Tag, ChevronRight, ChevronDown, Users, Check, Download, Upload, Image, PanelLeftClose, PanelLeftOpen, Pencil, Star, ShieldAlert, ScrollText, Paperclip, SquareArrowOutUpRight, Copy, CornerUpRight, CornerLeftUp, Undo2, X, MoreHorizontal, Settings2 } from 'lucide-react';
+import { Sun, Moon, Search, Library, Plus, Table2, FileText, Trash2, LayoutTemplate, Tag, ChevronRight, ChevronDown, Users, Check, Download, Upload, Image, PanelLeftClose, PanelLeftOpen, Pencil, Star, ShieldAlert, ScrollText, Paperclip, SquareArrowOutUpRight, Copy, CornerUpRight, CornerLeftUp, Undo2, X, MoreHorizontal, Settings2, Globe } from 'lucide-react';
 import { AgentDot } from './AgentBadge';
 import { tagColorClass } from '../tags';
 import { childrenForSection, topLevelForDocs } from '../treeMode';
@@ -216,7 +217,8 @@ function DbRows({
               style={pad}
               {...navItem(r.id)}
               data-expanded={kids.length > 0 ? (isOpen ? 'true' : 'false') : undefined}
-              onClick={() => ctx.onNavigate(r.id)}
+              onClick={(e) => openPage(e, r.id, { onNavigate: ctx.onNavigate, onOpenInNewTab: ctx.onOpenInNewTab })}
+              onAuxClick={(e) => openPageAux(e, r.id, { onNavigate: ctx.onNavigate, onOpenInNewTab: ctx.onOpenInNewTab })}
               onContextMenu={(e) => {
                 e.preventDefault();
                 ctx.setAddFor(null);
@@ -362,16 +364,22 @@ function FlatRow({
   active,
   parentLabel,
   onNavigate,
+  onOpenInNewTab,
   action,
 }: {
   p: PageMeta;
   active: boolean;
   parentLabel?: string;
   onNavigate: (id: string) => void;
+  onOpenInNewTab?: (id: string) => void;
   action?: React.ReactNode;
 }) {
   return (
-    <div className={'tree-item sb-flat' + (active ? ' active' : '')} onClick={() => onNavigate(p.id)}>
+    <div
+      className={'tree-item sb-flat' + (active ? ' active' : '')}
+      onClick={(e) => openPage(e, p.id, { onNavigate, onOpenInNewTab })}
+      onAuxClick={(e) => openPageAux(e, p.id, { onNavigate, onOpenInNewTab })}
+    >
       <span className="chevron spacer" />
       <span className="tree-icon">
         <PageIcon
@@ -691,6 +699,11 @@ function TreeItem({
         )}
         <span className="tree-icon"><PageIcon icon={p.icon} size={15} fallback={p.type === 'collection' ? <Table2 size={15} /> : <FileText size={15} />} /></span>
         <span className="tree-title">{p.title || 'Untitled'}</span>
+        {p.shared && (
+          <span className="tree-shared" title={t('Shared')}>
+            <Globe size={12} />
+          </span>
+        )}
         <span className="tree-actions" onClick={(e) => e.stopPropagation()} ref={actionsRef}>
           <button
             title={t('Add inside')}
@@ -1257,7 +1270,7 @@ export default function Sidebar({
         throw new Error(err?.error || t('Import failed (HTTP {status})', { status: res.status }));
       }
       const out = (await res.json()) as { workspaceId: string; name: string; pages: number };
-      toast(t('Imported “{name}” — {pages}', { name: out.name, pages: plural(out.pages, '{n} page', '{n} pages') }));
+      toast(t('Imported “{name}” ({pages})', { name: out.name, pages: plural(out.pages, '{n} page', '{n} pages') }));
       onWorkspacesChanged();
       onSwitchWorkspace(out.workspaceId);
     } catch (err) {
@@ -1330,7 +1343,7 @@ export default function Sidebar({
           />
         </div>
         <div className="sidebar-header-actions">
-          <button className="icon-btn" title={t('Library — every page')} onClick={onOpenIndex}>
+          <button className="icon-btn" title={t('Library (every page)')} onClick={onOpenIndex}>
             <Library size={17} />
           </button>
           {collapsed ? (
@@ -1374,6 +1387,7 @@ export default function Sidebar({
                 p={p}
                 active={p.id === currentId}
                 onNavigate={onNavigate}
+                onOpenInNewTab={onOpenInNewTab}
                 action={
                   <button title={t('Remove from favourites')} onClick={() => onToggleFavorite(p.id)}>
                     <Star size={14} fill="currentColor" />
@@ -1425,7 +1439,8 @@ export default function Sidebar({
               className={'tree-item' + (p.id === currentId ? ' active' : '')}
               style={{ paddingLeft: 6 }}
               {...navItem(p.id)}
-              onClick={() => onNavigate(p.id)}
+              onClick={(e) => openPage(e, p.id, { onNavigate, onOpenInNewTab })}
+              onAuxClick={(e) => openPageAux(e, p.id, { onNavigate, onOpenInNewTab })}
             >
               <span className="chevron spacer" />
               <span className="tree-icon">

@@ -31,7 +31,7 @@ true of it and will save you a debugging session:
 | Address | Must be the one an agent can reach. A cloud agent cannot open a private address, and the connect dialog warns when the instance is on plain `http://` outside localhost. See [Domain and proxy](domain.md). |
 | Batches | A JSON-RPC batch (a top-level array) is refused with `batch requests are not supported`. |
 | Size | The request body is capped at roughly the upload limit plus a third, since base64 inflates. The size is checked against what the request announces before any of the body is read; past that, the answer names the limit and points at `/api/upload`. |
-| Pace | About 240 calls a minute per account, with a burst of 60. Over that, a call comes back with `rate limit exceeded — too many requests, slow down`. |
+| Pace | About 240 calls a minute per account, with a burst of 60. Over that, a call comes back with `rate limit exceeded: too many requests, slow down`. |
 | Deactivated accounts | Refused here in their own right, not only in the browser: `this account has been deactivated`. |
 
 When a client connects, the server introduces itself as **salt.md**, reports its
@@ -217,7 +217,7 @@ because renaming a tool breaks every agent configuration in existence.
 | `list` | What is there of a kind: pages, templates, tags, workspaces, files, users, cover presets. For files, `under: <page id>` narrows it to one page and its sub-pages. |
 | `get_page` | One page as Markdown; `include_children` returns the whole sub-tree in one answer. |
 | `get_collection` | A database's property schema and its views, with ids. |
-| `query_rows` | Rows with server-side filter, sort and paging, including computed rollups and formulas. |
+| `query_rows` | Rows with server-side filter, sort and paging, including computed rollups and formulas. `filter_groups` adds OR: every condition in `filter` holds, plus one of the groups. |
 | `get_links` | What points at one page, or the whole graph. |
 | `get_workspace` | Name, role, members and their ids, page and database counts, and the workspace rules. |
 | `get_permissions` | Whether a page can be read, written or deleted, and why it is read-only if it is. |

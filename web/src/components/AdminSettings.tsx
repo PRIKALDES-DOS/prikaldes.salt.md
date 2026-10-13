@@ -370,7 +370,7 @@ ingress:
                     </label>
                     <p className="dialog-hint settings-hint">
                       {t(
-                        'Off: only admins create workspaces. On (default): anyone can create one of their own and becomes its admin — they then manage the members of THEIR workspace only, not the instance.',
+                        'Off: only admins create workspaces. On (default): anyone can create one of their own and becomes its admin. They then manage the members of THEIR workspace only, not the instance.',
                       )}
                     </p>
 
@@ -393,14 +393,14 @@ ingress:
                           {insecure && (
                             <p className="dialog-hint settings-hint pa-warn">
                               {t(
-                                '⚠ Google and Microsoft accept HTTPS redirect URIs only (localhost aside). Start a tunnel (the “Domain & proxy” tab) or enter a public HTTPS base URL under “General” — it then appears here on its own.',
+                                '⚠ Google and Microsoft accept HTTPS redirect URIs only (localhost aside). Start a tunnel (the “Domain & proxy” tab) or enter a public HTTPS base URL under “General”. It then appears here on its own.',
                               )}
                             </p>
                           )}
                           {!s.publicBaseUrl && quickUrl && (
                             <p className="dialog-hint settings-hint pa-warn">
                               {t(
-                                '⚠ This is the URL of the running quick tunnel — it changes on every start. For OAuth that lasts, use a named tunnel or your own domain and enter it as the base URL.',
+                                '⚠ This is the URL of the running quick tunnel. It changes on every start. For OAuth that lasts, use a named tunnel or your own domain and enter it as the base URL.',
                               )}
                             </p>
                           )}
@@ -438,7 +438,7 @@ ingress:
 
                 {tab === 'email' && (
                   <>
-                    <h3>{t('Sending through Google / Microsoft — no SMTP')}</h3>
+                    <h3>{t('Sending through Google / Microsoft (no SMTP)')}</h3>
                     {mail.provider ? (
                       <>
                         <div className="pa-status pa-running">
@@ -467,7 +467,7 @@ ingress:
                       <div className="pa-card">
                         <p className="dialog-hint settings-hint" style={{ margin: 0 }}>
                           {t(
-                            'Uses the OAuth apps from the Access tab: connect once and invitations go out through the chosen mailbox — no SMTP needed. Store and save the client ID and secret there first, then connect here. In the sign-in window you may pick any account at all — including a dedicated sending mailbox such as noreply@example.com; it does not have to be the account you sign in with.',
+                            'Uses the OAuth apps from the Access tab: connect once and invitations go out through the chosen mailbox, no SMTP needed. Store and save the client ID and secret there first, then connect here. In the sign-in window you may pick any account at all, including a dedicated sending mailbox such as noreply@example.com; it does not have to be the account you sign in with.',
                           )}
                         </p>
                         <div className="settings-row">
@@ -513,7 +513,7 @@ ingress:
 
                 {tab === 'proxy' && (
                   <>
-                    <h3>{t('Public access — built in, no proxy of your own')}</h3>
+                    <h3>{t('Public access (built in, no proxy of your own)')}</h3>
                     {pa && (pa.status === 'running' || pa.status === 'starting') && (
                       <div className={'pa-status pa-' + pa.status}>
                         <span className="pa-dot" />
@@ -526,7 +526,7 @@ ingress:
                           </>
                         )}
                         {pa.status === 'running' && pa.mode === 'token' && (
-                          <>{t('Tunnel connected — reachable under the hostname set in the Cloudflare dashboard.')}</>
+                          <>{t('Tunnel connected, reachable under the hostname set in the Cloudflare dashboard.')}</>
                         )}
                         <button className="btn-sm" disabled={tunnelBusy} onClick={() => void tunnel('stop')}>{t('Stop')}</button>
                       </div>
@@ -544,7 +544,7 @@ ingress:
                       <p className="dialog-hint settings-hint">
                         {t('One click, no account: creates a temporary')} <code>trycloudflare.com</code>{' '}
                         {t(
-                          'URL pointing at this instance. The URL changes on every start — ideal for trying things out and sharing quickly.',
+                          'URL pointing at this instance. The URL changes on every start. Ideal for trying things out and sharing quickly.',
                         )}{' '}
                         {!pa?.cloudflaredHere && t('On first start salt.md downloads the official cloudflared automatically.')}
                       </p>
@@ -593,7 +593,7 @@ ingress:
                       <strong>{t('3 · Straight to HTTPS (no Cloudflare, e.g. a VPS)')}</strong>
                       <p className="dialog-hint settings-hint">
                         {t(
-                          'salt.md fetches its own Let’s Encrypt certificate and listens on 80/443 — no Caddy or nginx needed. Requirements: the domain’s DNS A record points at this server and ports 80 and 443 are reachable. Restart after saving.',
+                          'salt.md fetches its own Let’s Encrypt certificate and listens on 80/443, no Caddy or nginx needed. Requirements: the domain’s DNS A record points at this server and ports 80 and 443 are reachable. Restart after saving.',
                         )}
                       </p>
                       <div className="settings-row">
@@ -611,7 +611,7 @@ ingress:
                       </div>
                     </div>
 
-                    <h3>{t('Manual — your own reverse proxy')}</h3>
+                    <h3>{t('Manual (your own reverse proxy)')}</h3>
                     <label className="settings-check">
                       <input type="checkbox" checked={trustProxy} onChange={(e) => setTrustProxy(e.target.checked)} />
                       <span>
@@ -620,7 +620,7 @@ ingress:
                     </label>
                     <p className="dialog-hint settings-hint">
                       {t(
-                        'Only switch this on when salt.md runs behind Caddy, nginx or a Cloudflare tunnel — the instance then sees real client IPs (sign-in protection, audit log). Leave it off without a proxy, or an attacker could forge their IP.',
+                        'Only switch this on when salt.md runs behind Caddy, nginx or a Cloudflare tunnel. The instance then sees real client IPs (sign-in protection, audit log). Leave it off without a proxy, or an attacker could forge their IP.',
                       )}
                     </p>
                     <label>{t('Internal address of the instance (upstream)')}</label>
@@ -646,12 +646,12 @@ ingress:
                     <h3>{t('Tell other tools when something changes')}</h3>
                     <p className="dialog-hint settings-hint">
                       {t(
-                        'Instead of other programs asking over and over whether anything is new, salt.md calls an address of your choosing when a page is created, changed or thrown away. That is what Zapier, Make and n8n need — and through them, everything else.',
+                        'Instead of other programs asking over and over whether anything is new, salt.md calls an address of your choosing when a page is created, changed or thrown away. That is what Zapier, Make and n8n need, and through them, everything else.',
                       )}
                     </p>
                     <p className="dialog-hint settings-hint">
                       {t(
-                        'The message says WHICH page and what happened to it — never the content. So a URL entered by mistake cannot turn into a steady export of what people write.',
+                        'The message says WHICH page and what happened to it, never the content. So a URL entered by mistake cannot turn into a steady export of what people write.',
                       )}
                     </p>
 
@@ -709,7 +709,7 @@ ingress:
 
                     {freshSecret && (
                       <div className="hook-secret">
-                        <strong>{t('Copy this secret now — it is shown only once.')}</strong>
+                        <strong>{t('Copy this secret now. It is shown only once.')}</strong>
                         <p className="dialog-hint">
                           {t(
                             'Your receiver uses it to check that a message really came from us. We send it as a signature in the X-Salt-Signature header.',
@@ -725,7 +725,7 @@ ingress:
                     <h3>{t('Configured')}</h3>
                     {hooks === null && <div className="dialog-hint">{t('Loading…')}</div>}
                     {hooks?.length === 0 && (
-                      <div className="dialog-hint">{t('Nothing yet — nobody is being called.')}</div>
+                      <div className="dialog-hint">{t('Nothing yet. Nobody is being called.')}</div>
                     )}
                     {hooks?.map((h) => (
                       <div key={h.id} className="hook-row">
@@ -775,7 +775,7 @@ ingress:
                       ))}
                     </div>
                     <p className="dialog-hint settings-hint">
-                      {t('salt.md lays the pages out itself and the browser only puts them on paper, so nothing of the browser gets printed along — no address, no date in the corner.')}
+                      {t('salt.md lays the pages out itself and the browser only puts them on paper, so nothing of the browser gets printed along: no address, no date in the corner.')}
                     </p>
                     <p className="dialog-hint settings-hint">
                       {t('These are the defaults. The panel beside a print view can deviate for one document, and that choice travels in the link.')}
@@ -901,7 +901,7 @@ export function CalendarSubModal({ onClose }: { onClose: () => void }) {
           <h2>{t('Subscribe to calendar')}</h2>
           <p className="dialog-hint">
             {t(
-              'Subscribe to every date property in your collections from Apple Calendar, Google Calendar or Outlook. The link is private — do not share it.',
+              'Subscribe to every date property in your collections from Apple Calendar, Google Calendar or Outlook. The link is private. Do not share it.',
             )}
           </p>
           {loadErr ? (

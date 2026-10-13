@@ -98,7 +98,7 @@ func cloudflaredAsset() (asset string, isTgz bool, err error) {
 			return "cloudflared-windows-amd64.exe", false, nil
 		}
 	}
-	return "", false, fmt.Errorf("no cloudflared build for %s/%s — install cloudflared manually", runtime.GOOS, runtime.GOARCH)
+	return "", false, fmt.Errorf("no cloudflared build for %s/%s. Install cloudflared manually", runtime.GOOS, runtime.GOARCH)
 }
 
 // downloadCloudflared fetches the official release binary into dataDir/bin.
@@ -303,7 +303,7 @@ func (s *Server) StartTunnel(mode, token string) error {
 		t.status = "error"
 		if t.lastErr == "" {
 			if err != nil {
-				t.lastErr = "cloudflared beendet: " + err.Error()
+				t.lastErr = "cloudflared exited: " + err.Error()
 			} else {
 				t.lastErr = "cloudflared exited on its own"
 			}

@@ -637,7 +637,7 @@ export const api = {
       if (file.size > api.uploadMaxBytes) {
         reject(
           new ApiError(
-            t('File too large ({size}) — 50 MB max.', { size: formatBytes(file.size) }),
+            t('File too large ({size}), 50 MB max.', { size: formatBytes(file.size) }),
             413,
             'file_too_large',
           ),
@@ -684,7 +684,7 @@ export const api = {
       };
       xhr.onerror = () => {
         finish();
-        reject(new ApiError(t('Upload failed — no connection to the server.'), 0));
+        reject(new ApiError(t('Upload failed: no connection to the server.'), 0));
       };
       xhr.send(fd);
     }),

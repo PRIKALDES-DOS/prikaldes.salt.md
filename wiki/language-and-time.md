@@ -58,8 +58,11 @@ manual merely to find out what it was.
 
 ### Language
 
-Two languages ship today: **English** and **Deutsch**. English is the source
-language of the product, so English is never a translation and never has gaps.
+Three languages ship today: **English**, **Deutsch** and **Español**. English
+is the source language of the product, so English is never a translation and
+never has gaps. German is kept complete by the build; Spanish was contributed
+and can trail a release behind, in which case the newest texts show in English
+until it catches up.
 
 Automatic walks your browser's list of preferred languages and takes the first
 one salt.md has a catalogue for; if there is none, English. That is why a German
@@ -327,10 +330,13 @@ Two properties of the translation system are worth knowing before you start. The
 **English source text is the key** (`t('Manage users')`, not `users.manage`), so
 a string with no translation yet falls through as correct English rather than as
 a broken identifier, and a partial catalogue is immediately usable. The cost is
-the mirror image: editing an English sentence orphans its translation. The build
-refuses a catalogue that has drifted (an entry nobody asks for any more, or a
-string with no entry), so the drift is loud rather than silent, and a language
-being worked on is finished before it ships.
+the mirror image: editing an English sentence orphans its translation.
+
+The build holds **German** to that: it refuses a German catalogue that has
+drifted (an entry nobody asks for any more, or a string with no entry). Every
+other language is reported and allowed to trail behind, with its missing texts
+in English. Otherwise whoever renames a button would have to deliver every
+language at once, and the languages are topped up before a release instead.
 
 ## Related
 

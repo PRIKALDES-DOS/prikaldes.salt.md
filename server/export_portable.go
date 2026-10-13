@@ -2,7 +2,6 @@ package server
 
 import (
 	"encoding/base64"
-	"fmt"
 	"io"
 	"net/http"
 	"net/url"
@@ -22,10 +21,9 @@ func (s *Server) portableExportHTML(p *page, r *http.Request) (string, error) {
 	}
 	origin := &url.URL{Scheme: scheme, Host: r.Host}
 	root, err := os.OpenRoot(filepath.Join(s.dataDir, "files"))
-	if err != nil {
-		return "", err
+	if err == nil {
+		defer root.Close()
 	}
-	defer root.Close()
 	allowed := publicPageFiles(p)
 	cache := map[string]string{}
 	sizes := map[string]int64{}
@@ -51,48 +49,23 @@ func (s *Server) portableExportHTML(p *page, r *http.Request) (string, error) {
 			attr := &token.Attr[i]
 			name := storedPublicFile(attr.Val)
 			if token.Data == "img" && attr.Key == "src" && name != "" {
-				if !allowed[name] {
-					return "", fmt.Errorf("unreferenced upload")
-				}
 				embedded, ok := cache[name]
-				if !ok {
-					f, err := root.Open(name)
-					if err != nil {
-						return "", err
+				if !ok && root != nil && allowed[name] {
+					data, mime := portableImage(root, name, remaining)
+					if data != nil {
+						sizes[name] = int64(len(data))
+						embedded = "data:" + mime + ";base64," + base64.StdEncoding.EncodeToString(data)
 					}
-					st, err := f.Stat()
-					if err != nil || !st.Mode().IsRegular() || st.Size() > remaining {
-						f.Close()
-						return "", fmt.Errorf("upload exceeds export limit")
-					}
-					data, err := io.ReadAll(io.LimitReader(f, remaining+1))
-					f.Close()
-					if err != nil || int64(len(data)) > remaining {
-						return "", fmt.Errorf("upload exceeds export limit")
-					}
-					mime := http.DetectContentType(data)
-					if strings.EqualFold(filepath.Ext(name), ".svg") && strings.Contains(strings.ToLower(string(data)), "<svg") {
-						clean := sanitizeSVG(string(data))
-						if clean == "" {
-							return "", fmt.Errorf("unsafe SVG upload")
-						}
-						data = []byte(clean)
-						mime = "image/svg+xml"
-					}
-					if !strings.HasPrefix(mime, "image/") {
-						return "", fmt.Errorf("upload is not an image")
-					}
-					sizes[name] = int64(len(data))
-					embedded = "data:" + mime + ";base64," + base64.StdEncoding.EncodeToString(data)
 					cache[name] = embedded
 				}
-				// Count every embedded occurrence, including cached repeats, to bound
-				// the resulting document rather than only unique upload reads.
-				if sizes[name] > remaining {
-					return "", fmt.Errorf("upload exceeds export limit")
+				if embedded != "" && sizes[name] <= remaining {
+					remaining -= sizes[name]
+					attr.Val = embedded
+				} else {
+					// Keep the download useful even when an upload cannot be embedded.
+					relative, err := url.Parse(attr.Val)
+					if err == nil { attr.Val = origin.ResolveReference(relative).String() }
 				}
-				remaining -= sizes[name]
-				attr.Val = embedded
 				changed = true
 			} else if attr.Key == "href" && strings.HasPrefix(attr.Val, "/") && !strings.HasPrefix(attr.Val, "//") {
 				relative, err := url.Parse(attr.Val)
@@ -108,4 +81,23 @@ func (s *Server) portableExportHTML(p *page, r *http.Request) (string, error) {
 			out.WriteString(raw)
 		}
 	}
+}
+
+// OpenRoot keeps failed or escaping uploads outside the exported document.
+func portableImage(root *os.Root, name string, remaining int64) ([]byte, string) {
+	f, err := root.Open(name)
+	if err != nil { return nil, "" }
+	defer f.Close()
+	st, err := f.Stat()
+	if err != nil || !st.Mode().IsRegular() || st.Size() > remaining { return nil, "" }
+	data, err := io.ReadAll(io.LimitReader(f, remaining+1))
+	if err != nil || int64(len(data)) > remaining { return nil, "" }
+	mime := http.DetectContentType(data)
+	if strings.EqualFold(filepath.Ext(name), ".svg") {
+		clean := sanitizeSVG(string(data))
+		if !strings.Contains(clean, "<svg") { return nil, "" }
+		data, mime = []byte(clean), "image/svg+xml"
+	}
+	if !strings.HasPrefix(mime, "image/") || int64(len(data)) > remaining { return nil, "" }
+	return data, mime
 }

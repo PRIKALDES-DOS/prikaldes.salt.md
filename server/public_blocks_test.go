@@ -1,6 +1,7 @@
 package server
 
 import (
+	"encoding/json"
 	"strings"
 	"testing"
 )
@@ -45,5 +46,17 @@ func TestPublicFormattingRejectsMarkupAndStyleInjection(t *testing.T) {
 	}
 	if !strings.Contains(got, `href="#"`) || !strings.Contains(got, `&lt;script&gt;`) {
 		t.Fatal("missing safe escaped content")
+	}
+}
+
+func TestPublicTOCPageBudget(t *testing.T) {
+	var blocks []map[string]any
+	for i := 0; i < 1000; i++ {
+		blocks = append(blocks, map[string]any{"type":"toc"}, map[string]any{"type":"heading", "id":"heading", "content":[]map[string]string{{"type":"text", "text":"Heading"}}})
+	}
+	content, _ := json.Marshal(blocks)
+	got := publicBlocksHTML(content)
+	if strings.Count(got, `class="bn-toc-entry"`) != 1000 || len(got) > 500000 {
+		t.Fatal("repeated TOCs exceed the per-page budget")
 	}
 }

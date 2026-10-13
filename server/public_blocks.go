@@ -75,9 +75,30 @@ func publicBlocksHTML(content []byte) string {
 	}
 	var out strings.Builder
 	out.WriteString(`<div class="public-blocks bn-editor">`)
-	renderPublicBlocks(&out, blocks, blocks)
+	ctx := &publicRenderContext{}
+	ctx.collectHeadings(blocks)
+	renderPublicBlocks(&out, blocks, ctx)
 	out.WriteString(`</div>`)
 	return out.String()
+}
+// The per-page budget bounds repeated TOCs, not just each individual block.
+type publicRenderContext struct {
+	headings []publicBlock
+	tocEntries int
+}
+func (c *publicRenderContext) collectHeadings(blocks []publicBlock) {
+	for _, b := range blocks {
+		if len(c.headings) >= 1000 { return }
+		if b.Type == "heading" && b.ID != "" {
+			// A long heading must not defeat the output budget.
+			text := []rune(plainInline(b.Content))
+			if len(text) > 256 { text = text[:256] }
+			b.Content, _ = json.Marshal([]map[string]string{{"type":"text", "text":string(text)}})
+			if len(b.ID) > 256 { b.ID = b.ID[:256] }
+			c.headings = append(c.headings, b)
+		}
+		c.collectHeadings(b.Children)
+	}
 }
 func publicBlockAttrs(b publicBlock) string {
 	attrs := publicAttributes(b.Props)
@@ -86,7 +107,7 @@ func publicBlockAttrs(b publicBlock) string {
 	}
 	return attrs
 }
-func renderPublicBlocks(out *strings.Builder, blocks, document []publicBlock) {
+func renderPublicBlocks(out *strings.Builder, blocks, document *publicRenderContext) {
 	for i := 0; i < len(blocks); {
 		b := blocks[i]
 		if b.Type == "bulletListItem" || b.Type == "numberedListItem" || b.Type == "checkListItem" {
@@ -167,7 +188,7 @@ func renderPublicMedia(out *strings.Builder, b publicBlock) {
 	}
 	out.WriteString(`</figure></div>`)
 }
-func renderPublicBlock(out *strings.Builder, b publicBlock, document []publicBlock) {
+func renderPublicBlock(out *strings.Builder, b publicBlock, document *publicRenderContext) {
 	// Unknown types cannot inject markup or CSS selectors through their type.
 	out.WriteString(`<div class="public-block" data-content-type="` + html.EscapeString(b.Type) + `"` + publicBlockAttrs(b) + `>`)
 	inline := func() string { return publicInline(b.Content) }
@@ -248,17 +269,13 @@ func renderPublicBlock(out *strings.Builder, b publicBlock, document []publicBlo
 	case "database":
 		out.WriteString(`<a href="/p/` + url.PathEscape(strProp(b.Props, "collectionId", "")) + `">▦ Collection</a>`)
 	case "toc":
+		if document.tocEntries >= 1000 { break }
 		out.WriteString(`<nav class="bn-toc" aria-label="Table of contents"><div class="bn-toc-title">Table of contents</div>`)
-		var headings func([]publicBlock)
-		headings = func(bs []publicBlock) {
-			for _, h := range bs {
-				if h.Type == "heading" && h.ID != "" {
-					out.WriteString(`<a class="bn-toc-entry" href="#block-` + html.EscapeString(h.ID) + `">` + html.EscapeString(plainInline(h.Content)) + `</a>`)
-				}
-				headings(h.Children)
-			}
+		for _, h := range document.headings {
+			if document.tocEntries >= 1000 { break }
+			out.WriteString(`<a class="bn-toc-entry" href="#block-` + html.EscapeString(h.ID) + `">` + html.EscapeString(plainInline(h.Content)) + `</a>`)
+			document.tocEntries++
 		}
-		headings(document)
 		out.WriteString(`</nav>`)
 	default:
 		if text := inline(); text != "" {

@@ -15,7 +15,7 @@ covered in [Permissions](permissions.md).
 
 ## What a public link is
 
-One page, read-only, no account, no session. The address looks like this:
+One page, read-only, no account. The address looks like this:
 
 ```
 https://salt.example.com/public/4f9c2ab1e07d3856c2f1a904bb73e5d81c6a
@@ -56,32 +56,38 @@ token and the previous one stops working immediately.
    `In 7 days` or `In 30 days`).
 5. Optionally type a password into the **Password (optional)** field. It takes
    effect when you leave the field.
-6. **Copy** puts the address on the clipboard. Clicking into the field selects
+6. The **Copy link** icon inside the address field puts the address on the clipboard. Clicking into the field selects
    the whole address, for a browser where the clipboard button is blocked.
 
 ![Publishing a page: the link, an optional password and an optional expiry.](img/share-dialog.png)
 
 Three behaviours of this menu are worth knowing before you use it a second time.
 
-**Opening the menu publishes the page.** There is no "publish" button and no
-confirmation. If you open the globe menu to see whether a page is shared, you
-have shared it. Use **Stop sharing** to undo that.
+**You can see sharing without opening the menu.** A published page carries a
+small globe: in the sidebar tree, in the sub-pages list, and on the topbar
+globe button itself, which is highlighted while the link is live. An expired
+link drops the marker on its own. So to check whether a page is shared, look
+at the marker.
 
-**The menu never shows an existing link.** Nothing in salt.md reports whether a
-page is currently published, so the dialog cannot show you the link you made
-last week; it makes a fresh one, and the old one dies at that moment. The same
-happens when you change the expiry or leave the password field: each of those
-re-mints the link. So the address you send out is the address you copied in that
-sitting; a link that has been passed around cannot be given a password
-afterwards without breaking it.
+**Opening the menu publishes an unshared page.** There is no "publish" button
+and no confirmation. If you open the globe menu on an unmarked page, you have
+shared it. Use **Stop sharing** to undo that.
 
-**A second sitting publishes an unprotected link.** The expiry and the password
-live only in the open menu, never on the page. Navigate away and back, or
-reload the browser, and the menu reopens at `Never` with an empty password box,
-and mints a link on exactly those settings. A page that carried a password and a
-seven-day expiry yesterday is public with neither from the moment somebody opens
-its globe menu today. If protection matters, set it again in the same sitting
-and hand out the new address.
+**A shared page keeps its link when you open the menu.** salt.md stores only a
+scrambled form of the token, so the menu cannot show you the address made last
+week. On a page that is already shared it says so ("This page is shared
+publicly. Its address was only shown when the link was made.") and offers two
+buttons: **New link** makes a fresh address and the old one stops working at
+that moment, **Stop sharing** ends it. Changing the expiry or leaving the
+password field re-mints the link too. So the address you send out is the
+address you copied in that sitting; a link that has been passed around cannot
+be given a password afterwards without breaking it.
+
+**A new link starts unprotected.** The expiry and the password live only in
+the open menu, never on the page. Navigate away and back, or reload the
+browser, and the menu starts again at `Never` with an empty password box, so
+**New link** mints an open link. If protection matters, set it again in the
+same sitting and hand out the new address.
 
 Taking protection off works the same way, which is the one useful side of it:
 clearing the password field and leaving it, or setting **Expires:** back to
@@ -101,8 +107,8 @@ any more than they can open it.
 
 **The link belongs to the page, not to the person who made it.** Anyone with
 write access can publish and revoke, and they all act on the same single link.
-A colleague opening the globe menu on a page you published replaces the address
-that is already circulating; their **Stop sharing** kills it.
+A colleague who presses **New link** on a page you published replaces the
+address that is already circulating; their **Stop sharing** kills it.
 
 ## The address in the link
 
@@ -135,8 +141,8 @@ the last visit. `Never` is the default.
 The first request after the expiry deletes the link and shows the visitor a
 plain page:
 
-> **Not found**
-> This link is invalid or has expired.
+> **Link unavailable**
+> This link may have been disabled or expired.
 
 An expired link and a made-up link are indistinguishable from outside, which is
 deliberate: a visitor learns nothing about whether the page exists.
@@ -151,18 +157,19 @@ either or neither.
 
 A visitor who opens a protected link gets a small form instead of the page:
 
-> 🔒 **Protected page**
+> **Protected page**
 > This page is protected by a password.
-> `Password` [ **Open** ]
+> `Page password` [ **Open page** ]
 
-A wrong password redisplays the form with **Wrong password.** in red. The
+A wrong password redisplays the form with **Wrong password. Please try again.** in red. The
 password is sent in the form body, so it never appears in the address bar or in
 a browser history entry.
 
 Three properties of this that surprise people:
 
-- **There is no session.** Nothing is remembered after the page is shown, so
-  every fresh visit, including a reload, asks again.
+- **A successful password entry grants access for one hour.** A path-bound,
+  HttpOnly cookie authorizes this share and its assets. It grants no account
+  identity; revoking the share or replacing its password invalidates the grant.
 - **The password cannot be read back or changed in place.** It is stored
   scrambled together with the token, and neither you nor an administrator can
   recover it. Setting a different one re-mints the link.
@@ -177,12 +184,15 @@ layout: title and icon, description, optional cover, and the page content. It
 uses the same bundled stylesheet and fonts as the app, with a reading width
 that adapts to a phone. Light, dark and system appearance are available; the
 content itself needs no JavaScript. Printing and HTML export keep their own
-renderer and options.
+renderer and options. Downloaded HTML embeds supported uploads up to a total
+32 MiB; unavailable, unsupported or over-budget images retain their absolute
+address instead. Such fallback images still require access to the instance.
 
 Saved block formatting is preserved: alignment, inline emphasis and highlights,
 headings, lists, read-only checkboxes, quotes, code, tables with header cells,
 callouts, toggles, columns, bookmarks, media sizing and captions, and a table of
-contents linking to headings. Unsafe link schemes are replaced by a dead link.
+contents linking to headings (up to 1,000 entries across the page). Diagrams
+are displayed as images, with source text when no safe drawing is available. Unsafe link schemes are replaced by a dead link.
 
 Uploaded files currently referenced by the shared page, its icon or its cover
 are served through a token-scoped address. This does not expose other uploads,
@@ -218,9 +228,10 @@ front of it, then a pipe table.
   A relation prints the internal ids of the pages it points at, and a person
   column prints the internal id of whoever was picked from the member list:
   ids, not titles and not names.
-- **Rows marked private are included.** The private flag governs who may read
-  the page inside salt.md; it does not filter this table. Check a collection for
-  private rows before you publish it.
+- **Rows marked private are left out**, whoever they belong to, your own
+  included. A visitor without an account is nobody's colleague, so the private
+  flag hides a row from the published table just as it hides it from other
+  members.
 - Sub-pages of the rows are not included.
 
 ## Sharing more than one page
@@ -263,7 +274,7 @@ Removing the person who published it from the workspace does not.
 
 - Sharing a page does not share the workspace it lives in, and gives a visitor
   no way to reach anything else in it ([Workspaces](workspaces.md)).
-- A public link grants no session and no identity. A visitor cannot edit,
+- A public link grants no account session and no identity. A visitor cannot edit,
   comment, search, or see who else has the link.
 - A page that is **private** can still be published, and the link works. The
   lock icon in the topbar and the globe beside it are separate switches

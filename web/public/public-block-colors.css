@@ -1,4 +1,4 @@
-/* Generated from installed @blocknote/core; do not edit. */
+/* Public reader palette, based on BlockNote. Review alongside theme changes. */
 [data-theme="light"] .public-blocks [data-text-color="gray"]{color:#9b9a97}
 [data-theme="light"] .public-blocks [data-background-color="gray"]{background-color:#ebeced}
 [data-theme="light"] .public-blocks [data-text-color="brown"]{color:#64473a}
