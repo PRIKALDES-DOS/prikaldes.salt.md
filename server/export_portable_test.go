@@ -79,3 +79,15 @@ func TestPortableExportCountsRepeatedImagesAgainstLimit(t *testing.T) {
 		t.Fatal("repeated images must fall back after the total limit")
 	}
 }
+
+func TestPortableExportFallsBackForUnsupportedImages(t *testing.T) {
+	s := testServer(t)
+	for _, name := range []string{"document.pdf", "unsupported.avif", "unsafe.svg"} {
+		seedFile(t, s, name, "unsupported image content")
+		content, _ := json.Marshal([]map[string]any{{"type": "image", "props": map[string]string{"url": "/files/" + name}}})
+		got, err := s.portableExportHTML(&page{Content: content}, httptest.NewRequest("GET", "https://docs.example.test/export", nil))
+		if err != nil || !strings.Contains(got, "https://docs.example.test/files/"+name) {
+			t.Fatalf("missing fallback: %s", name)
+		}
+	}
+}

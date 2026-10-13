@@ -64,7 +64,9 @@ func (s *Server) portableExportHTML(p *page, r *http.Request) (string, error) {
 				} else {
 					// Keep the download useful even when an upload cannot be embedded.
 					relative, err := url.Parse(attr.Val)
-					if err == nil { attr.Val = origin.ResolveReference(relative).String() }
+					if err == nil {
+						attr.Val = origin.ResolveReference(relative).String()
+					}
 				}
 				changed = true
 			} else if attr.Key == "href" && strings.HasPrefix(attr.Val, "/") && !strings.HasPrefix(attr.Val, "//") {
@@ -86,18 +88,28 @@ func (s *Server) portableExportHTML(p *page, r *http.Request) (string, error) {
 // OpenRoot keeps failed or escaping uploads outside the exported document.
 func portableImage(root *os.Root, name string, remaining int64) ([]byte, string) {
 	f, err := root.Open(name)
-	if err != nil { return nil, "" }
+	if err != nil {
+		return nil, ""
+	}
 	defer f.Close()
 	st, err := f.Stat()
-	if err != nil || !st.Mode().IsRegular() || st.Size() > remaining { return nil, "" }
+	if err != nil || !st.Mode().IsRegular() || st.Size() > remaining {
+		return nil, ""
+	}
 	data, err := io.ReadAll(io.LimitReader(f, remaining+1))
-	if err != nil || int64(len(data)) > remaining { return nil, "" }
+	if err != nil || int64(len(data)) > remaining {
+		return nil, ""
+	}
 	mime := http.DetectContentType(data)
 	if strings.EqualFold(filepath.Ext(name), ".svg") {
 		clean := sanitizeSVG(string(data))
-		if !strings.Contains(clean, "<svg") { return nil, "" }
+		if !strings.Contains(clean, "<svg") {
+			return nil, ""
+		}
 		data, mime = []byte(clean), "image/svg+xml"
 	}
-	if !strings.HasPrefix(mime, "image/") || int64(len(data)) > remaining { return nil, "" }
+	if !strings.HasPrefix(mime, "image/") || int64(len(data)) > remaining {
+		return nil, ""
+	}
 	return data, mime
 }

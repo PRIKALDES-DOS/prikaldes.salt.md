@@ -52,7 +52,7 @@ func TestPublicFormattingRejectsMarkupAndStyleInjection(t *testing.T) {
 func TestPublicTOCPageBudget(t *testing.T) {
 	var blocks []map[string]any
 	for i := 0; i < 1000; i++ {
-		blocks = append(blocks, map[string]any{"type":"toc"}, map[string]any{"type":"heading", "id":"heading", "content":[]map[string]string{{"type":"text", "text":"Heading"}}})
+		blocks = append(blocks, map[string]any{"type": "toc"}, map[string]any{"type": "heading", "id": "heading", "content": []map[string]string{{"type": "text", "text": "Heading"}}})
 	}
 	content, _ := json.Marshal(blocks)
 	got := publicBlocksHTML(content)
