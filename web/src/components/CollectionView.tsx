@@ -152,7 +152,7 @@ function isEmptyVal(v: unknown): boolean {
  *  value. Never both — the same rule the server applies (rowFilter.vals). */
 export function filterValues(f: Filter): string[] {
   if (f.values?.length) return f.values;
-  return f.value === '' ? [] : [f.value];
+  return f.value ? [f.value] : [];
 }
 
 /** Is this condition finished enough to mean anything? An unfinished one must
@@ -161,13 +161,13 @@ export function filterValues(f: Filter): string[] {
  *  made the date filter look broken. `is_empty` is the deliberate version.
  *  A half-typed relative day ("today-") waits the same way. */
 export function filterIsArmed(f: Filter): boolean {
-  const op = f.op ?? (f.value === '' ? 'is_not_empty' : 'is');
+  const op = f.op ?? (f.value ? 'is' : 'is_not_empty');
   if (op === 'is_empty' || op === 'is_not_empty') return true;
   if (op === 'between')
     return (
-      f.value !== '' &&
+      !!f.value &&
       (f.value2 ?? '') !== '' &&
-      !isUnfinishedRelativeDay(f.value) &&
+      !isUnfinishedRelativeDay(f.value ?? '') &&
       !isUnfinishedRelativeDay(f.value2 ?? '')
     );
   const vals = filterValues(f);
@@ -176,7 +176,7 @@ export function filterIsArmed(f: Filter): boolean {
 
 function matchesFilter(row: Row, f: Filter, isDate: boolean): boolean {
   const v = row.props[f.property];
-  const op = f.op ?? (f.value === '' ? 'is_not_empty' : 'is');
+  const op = f.op ?? (f.value ? 'is' : 'is_not_empty');
   if (!filterIsArmed(f)) return true;
   // A relative day names a different date every day. Resolve it now — the
   // same way the server resolves it per query — or the rows the server sent
@@ -184,7 +184,7 @@ function matchesFilter(row: Row, f: Filter, isDate: boolean): boolean {
   // option named "Today" must keep matching the option, not the date.
   const day = (s: string) => (isDate ? (resolveSmartDate(s) ?? s) : s);
   const live = (s: string) => !isUnfinishedRelativeDay(s);
-  const value = day(f.value);
+  const value = day(f.value ?? '');
   const vals = filterValues(f)
     .filter(live)
     .map(day);

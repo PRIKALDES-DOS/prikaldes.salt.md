@@ -188,6 +188,10 @@ func (s *Server) resolveSmartDates(collectionID string, filters []rowFilter, now
 			dates[id] = true
 		}
 	}
+	// Created and Updated read the row's own timestamps as days and are
+	// filterable with the same operators, so a relative day works on them too.
+	dates[sortCreatedProp] = true
+	dates[sortUpdatedProp] = true
 	out := make([]rowFilter, len(filters))
 	for i, f := range filters {
 		if dates[f.Prop] {
