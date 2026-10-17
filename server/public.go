@@ -37,6 +37,10 @@ func (s *Server) handlePublicView(w http.ResponseWriter, r *http.Request) {
 	pageID, needPW, pwOK, found := s.resolveShare(token, password)
 	w.Header().Set("Content-Type", "text/html; charset=utf-8")
 	w.Header().Set("X-Robots-Tag", "noindex")
+	// Stop sharing has to end the page everywhere at once. Without a word on
+	// caching, a proxy or the tunnel's edge may keep a copy of a page whose link
+	// was revoked, which is exactly the report in #68.
+	w.Header().Set("Cache-Control", "private, no-store")
 	if !found {
 		w.WriteHeader(404)
 		w.Write([]byte(`<!doctype html><html><head><meta charset="utf-8"><title>salt.md</title><style>` + htmlDocStyle + `</style></head><body><h1>Not found</h1><p>This link is invalid or has expired.</p></body></html>`))

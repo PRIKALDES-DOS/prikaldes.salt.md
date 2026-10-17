@@ -51,13 +51,13 @@ token and the previous one stops working immediately.
    **Share to web (read-only link)**. On a narrow window the topbar keeps only
    the star, the panel button and **More**; the globe moves into that ⋯ menu
    under the same name.
-3. The menu opens and **the link is created straight away**. The field reads
-   `Creating…` for the moment it takes, then holds the address. Above it:
-   "Anyone with this link can view this page (read-only)."
+3. The menu opens and says "This page is not public. A link lets anyone who
+   has it read the page." Opening it publishes nothing.
 4. Optionally pick an expiry under **Expires:** (`Never`, `In 1 day`,
-   `In 7 days` or `In 30 days`).
-5. Optionally type a password into the **Password (optional)** field. It takes
-   effect when you leave the field.
+   `In 7 days` or `In 30 days`) and type a password into
+   **Password (optional)**.
+5. **Create link** publishes the page. The field then holds the address, under
+   "Anyone with this link can view this page (read-only)."
 6. **Copy** puts the address on the clipboard. Clicking into the field selects
    the whole address, for a browser where the clipboard button is blocked.
 
@@ -71,36 +71,36 @@ globe button itself, which is highlighted while the link is live. An expired
 link drops the marker on its own. So to check whether a page is shared, look
 at the marker.
 
-**Opening the menu publishes an unshared page.** There is no "publish" button
-and no confirmation. If you open the globe menu on an unmarked page, you have
-shared it. Use **Stop sharing** to undo that.
-
 **A shared page keeps its link when you open the menu.** salt.md stores only a
 scrambled form of the token, so the menu cannot show you the address made last
 week. On a page that is already shared it says so ("This page is shared
 publicly. Its address was only shown when the link was made.") and offers two
 buttons: **New link** makes a fresh address and the old one stops working at
-that moment, **Stop sharing** ends it. Changing the expiry or leaving the
-password field re-mints the link too. So the address you send out is the
-address you copied in that sitting; a link that has been passed around cannot
-be given a password afterwards without breaking it.
+that moment, **Stop sharing** ends it.
+
+**Changing the expiry or the password takes a new link.** The password is bound
+to the address it was set on. Change either after the link exists and the menu
+offers **New link**, with "A new link stops the old one from working." above
+it; until you press it, the address you copied keeps working as it was made.
+So the address you send out is the address you copied in that sitting, and a
+link that has been passed around cannot be given a password afterwards without
+breaking it.
 
 **A new link starts unprotected.** The expiry and the password live only in
-the open menu, never on the page. Navigate away and back, or reload the
-browser, and the menu starts again at `Never` with an empty password box, so
-**New link** mints an open link. If protection matters, set it again in the
-same sitting and hand out the new address.
+the open menu, never on the page. Open another page, or reload the browser,
+and the menu starts again at `Never` with an empty password box. If protection
+matters, set it before pressing **Create link** or **New link**.
 
-Taking protection off works the same way, which is the one useful side of it:
-clearing the password field and leaving it, or setting **Expires:** back to
-`Never`, mints a fresh open link. There is no separate "remove password": the
-removal is a new link without one, at a new address.
+Taking protection off works the same way: clear the password or set
+**Expires:** back to `Never`, then press **New link**. There is no separate
+"remove password": the removal is a new link without one, at a new address.
 
 ### Who can publish
 
 Publishing needs **write access** to the page: an admin or a member of its
-workspace. A viewer sees the globe button, and clicking it produces the message
-"Sharing failed".
+workspace. A viewer sees the globe button and the page's state in its menu,
+with "Only people who can edit this page can share it or stop sharing it." in
+place of the buttons.
 
 Somebody else's private page is the exception. Only its owner and the
 workspace's admins can read such a page at all, and write access is built on
@@ -273,9 +273,8 @@ link of its own; a visitor who clicks it lands on the sign-in screen.
 page**. The next visitor gets the "Not found" page. There is no grace period and
 no way to bring a revoked token back; publishing again produces a new address.
 
-The menu empties and closes either way. A refused revoke looks exactly like a
-successful one, so a viewer who clicks **Stop sharing** has not revoked
-anything, and nothing on screen says so.
+If the server refuses, the menu stays as it was and says
+"Could not stop sharing"; the link is still live.
 
 Three related cases:
 
@@ -302,12 +301,11 @@ Removing the person who published it from the workspace does not.
 - A page that is **private** can still be published, and the link works. The
   lock icon in the topbar and the globe beside it are separate switches
   ([Permissions](permissions.md)).
-- The **Shared** shelf in the library means "visible to the workspace", the
-  opposite of private. It is not a list of published pages, and there is no such
-  list anywhere: no counter and no marker in the sidebar. Publishing from the
-  browser leaves no trace in the [audit log](history-and-audit.md) either; an
-  agent's `set_sharing` does, see below. If you need to know whether a page is
-  published, the honest answer is to revoke and republish it.
+- The **Workspace** shelf in the library means "visible to the workspace", the
+  opposite of private. It is not a list of published pages; the globe marker in
+  the sidebar tree is how a published page shows. Publishing from the browser
+  leaves no trace in the [audit log](history-and-audit.md); an agent's
+  `set_sharing` does, see below.
 - An API token is not a share. It carries the full identity of the person who
   made it ([Agents](agents.md)).
 

@@ -456,9 +456,10 @@ looking at, so what you print is the table, board or calendar as arranged.
 
 The **lock** toggles a page between *Visible to the workspace* and
 *Private (only you)*, and the setting is inherited by everything under it. The
-**globe** mints a read-only link anyone can open without signing in, with an
-optional expiry (*Never*, *In 1 day*, *In 7 days*, *In 30 days*) and an optional
-password, and **Stop sharing** revokes it. Both are covered properly in
+**globe** opens the menu where **Create link** mints a read-only link anyone can
+open without signing in, with an optional expiry (*Never*, *In 1 day*,
+*In 7 days*, *In 30 days*) and an optional password, and **Stop sharing**
+revokes it. Both are covered properly in
 [Permissions](permissions.md) and [Sharing](sharing.md).
 
 ## Saving, and what else lives on a page

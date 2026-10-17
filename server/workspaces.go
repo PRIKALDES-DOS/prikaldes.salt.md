@@ -1084,6 +1084,8 @@ func (s *Server) resolveShare(token, password string) (pageID string, needPW, pw
 }
 
 func (s *Server) handlePublicPage(w http.ResponseWriter, r *http.Request) {
+	// Same rule as the HTML view: a revoked link must not live on in a cache.
+	w.Header().Set("Cache-Control", "private, no-store")
 	pageID, needPW, pwOK, found := s.resolveShare(r.PathValue("token"), r.Header.Get("X-Share-Password"))
 	if !found {
 		httpError(w, 404, "not found")

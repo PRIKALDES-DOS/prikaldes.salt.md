@@ -30,7 +30,10 @@ function tabs(): { id: Mode; label: string; icon: React.ReactNode }[] {
   return [
     { id: 'recent', label: t('Recently used'), icon: <Clock size={14} /> },
     { id: 'favorites', label: t('Favorites'), icon: <Star size={14} /> },
-    { id: 'shared', label: t('Shared'), icon: <Users size={14} /> },
+    // Pages the whole workspace can see. Labelled Shared until #68: the globe
+    // says Shared for a public link, and one word for two things read as
+    // "everything I have is public".
+    { id: 'shared', label: t('Workspace'), icon: <Users size={14} /> },
     { id: 'private', label: t('Private'), icon: <Lock size={14} /> },
     { id: 'all', label: t('All pages'), icon: <Library size={14} /> },
     { id: 'graph', label: t('Graph'), icon: <Share2 size={14} /> },

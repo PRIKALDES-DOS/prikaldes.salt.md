@@ -1088,5 +1088,8 @@
   "New link": "Neuer Link",
   "Anyone with this link can view this page (read-only).": "Jeder mit diesem Link kann die Seite ansehen (nur lesen).",
   "Expires:": "Läuft ab:",
-  "Creating…": "Wird erstellt…"
+  "This page is not public. A link lets anyone who has it read the page.": "Diese Seite ist nicht öffentlich. Mit einem Link kann jeder, der ihn hat, die Seite lesen.",
+  "Create link": "Link erstellen",
+  "Could not stop sharing": "Teilen konnte nicht beendet werden",
+  "Only people who can edit this page can share it or stop sharing it.": "Nur wer diese Seite bearbeiten darf, kann sie teilen oder das Teilen beenden."
 }

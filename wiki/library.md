@@ -77,7 +77,7 @@ carry none.
 | --- | --- |
 | **Recently used** | The pages this browser opened last, newest first |
 | **Favorites** | Everything you starred |
-| **Shared** | Every page the workspace can see |
+| **Workspace** | Every page the workspace can see |
 | **Private** | Every page only its owner can see |
 | **All pages** | Everything the two above add up to |
 | **Graph** | Every page as a dot, every connection as a line |
@@ -95,7 +95,7 @@ clears them. This shelf has its own order (the order you opened them in), and
 the first sort option is called **Last opened** here rather than **Name (A–Z)**
 for that reason.
 
-### Shared and Private
+### Workspace and Private
 
 These two split the shelf by *visibility*, which is a different thing from
 [public sharing](sharing.md):
@@ -103,11 +103,11 @@ These two split the shelf by *visibility*, which is a different thing from
 - **Private** means a page its owner and the workspace admins can read, and
   nobody else. In the table's **Source** column such a page shows a padlock and
   the word **Private**.
-- **Shared** means visible to the members of its workspace. It says nothing
+- **Workspace** means visible to the members of its workspace. It says nothing
   about whether the page has a public link.
 
-A page with a public share link still counts as **Shared** or **Private** by its
-workspace visibility. See [Permissions](permissions.md) for what each means.
+A page with a public share link still counts as **Workspace** or **Private** by
+its workspace visibility. See [Permissions](permissions.md) for what each means.
 
 ### All pages
 
