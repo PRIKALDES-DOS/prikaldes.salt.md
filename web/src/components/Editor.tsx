@@ -1730,13 +1730,23 @@ function BlockContent({
         onItemClick: () => insertOrUpdateBlockForSlashMenu(editor, { type: 'subpages' } as never),
       },
     ];
-    return filterSuggestionItems(
+    const matches = filterSuggestionItems(
       [
         ...getDefaultReactSlashMenuItems(editor),
         ...custom,
       ],
       query,
     );
+    // The menu keys headings by group. Repeated, non-adjacent groups create
+    // duplicate React keys and leave stale headings behind when filtering.
+    // Keep each group contiguous, with the first occurrence defining its order.
+    const groups = new Map<string | undefined, typeof matches>();
+    for (const item of matches) {
+      const group = groups.get(item.group);
+      if (group) group.push(item);
+      else groups.set(item.group, [item]);
+    }
+    return [...groups.values()].flat();
   };
 
   // Page-link menu (shared by the "@" mention trigger and the "[[" wiki-link
