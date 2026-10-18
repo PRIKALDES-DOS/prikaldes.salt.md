@@ -7,7 +7,7 @@ import {
 import { filterSuggestionItems, insertOrUpdateBlockForSlashMenu } from '@blocknote/core';
 import { en as coreEn } from '@blocknote/core/locales';
 import { BlockNoteView } from '@blocknote/mantine';
-import { api } from '../api';
+import { api, ApiError, materializeQuery } from '../api';
 import { toast } from '../toast';
 import type { Backlink, CollectionConfig, Page, PageMeta, PropOption, User } from '../types';
 import { SaltProvider } from '../collab';
@@ -1470,6 +1470,7 @@ function CollabEditor({ page, user, theme, canEdit, onReset, ...rest }: CollabPr
   useEffect(() => {
     const p = new SaltProvider(
       page.id,
+      page.docGen ?? null,
       (isNew) => {
         // Seed a brand-new CRDT doc from the page's stored content once.
         if (isNew && Array.isArray(page.content) && page.content.length > 0) {
@@ -1847,22 +1848,40 @@ function BlockContent({
   useEffect(() => {
     const flush = (keepalive: boolean) => {
       if (seedFailed.current || !dirty.current) return;
+      // The document was replaced from outside the editor (an agent's rewrite,
+      // a restore, an import): this copy is of the old one. The 4001 that says
+      // so is also what unmounts us, so this is the flush that used to put the
+      // old text back over the new (#79). Named by its generation, the server
+      // refuses it and keeps it in the page history; a server that sends no
+      // generation would write it, so then it is dropped.
+      if (provider.replacedDoc && provider.gen === null) {
+        dirty.current = false;
+        return;
+      }
       const doc = editor.document;
       // Guard against clobbering stored content with an accidentally-empty doc.
       if (hadContent && isEffectivelyEmpty(doc)) return;
       dirty.current = false;
+      // Named so the server can refuse a copy of a replaced document even when
+      // the 4001 never reached this tab (server/docgen.go).
+      const opts = { materialize: true, gen: provider.gen, replaced: provider.replacedDoc };
       if (keepalive) {
         // Unmount (e.g. following a link chip): a normal fetch would be
         // cancelled, so use keepalive to guarantee the write — otherwise the
         // just-inserted @-mention's backlink would never be recorded.
-        void fetch(`/api/pages/${provider.pageId}?materialize=1`, {
+        void fetch(`/api/pages/${provider.pageId}${materializeQuery(opts)}`, {
           method: 'PATCH',
           headers: { 'Content-Type': 'application/json' },
           body: JSON.stringify({ content: doc }),
           keepalive: true,
         });
       } else {
-        api.updatePage(provider.pageId, { content: doc }, { materialize: true }).catch(() => {
+        api.updatePage(provider.pageId, { content: doc }, opts).catch((e: unknown) => {
+          if (e instanceof ApiError && e.code === 'doc_replaced') {
+            // Replaced while our socket was down: reload onto the new document.
+            provider.replaced();
+            return;
+          }
           dirty.current = true; // retry on next change / unmount flush
           toast(t('Page content not saved'));
         });
