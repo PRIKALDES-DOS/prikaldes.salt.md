@@ -105,6 +105,14 @@ func TestAWorkspaceClosedToAgentsIsClosedForWriting(t *testing.T) {
 	if rec := f.bearer(f.openTok, "POST", "/api/pages", `{"title":"x","workspaceId":"`+f.team+`"}`); rec.Code != 403 {
 		t.Errorf("an agent created a page in a workspace closed to agents: %d", rec.Code)
 	}
+	// Nor over MCP with a token that names no workspaces at all.
+	open := &user{ID: f.owner, TokenKind: tokenKindAPI, TokenScope: "write"}
+	if out, err := callTool(t, f.s, open, "get_page", `{"page_id":"`+page+`"}`); err == nil {
+		t.Errorf("get_page read a page in a workspace closed to agents: %.80s", out)
+	}
+	if _, err := callTool(t, f.s, open, "write_content", `{"page_id":"`+page+`","markdown":"agent was here"}`); err == nil {
+		t.Error("write_content wrote into a workspace closed to agents")
+	}
 	// Nor can it carry a page in from outside.
 	outside := f.s.makePage(t, f.other, f.owner, "", "Notes from elsewhere", `{}`)
 	if rec := f.bearer(f.openTok, "PATCH", "/api/pages/"+outside, `{"workspaceId":"`+f.team+`"}`); rec.Code == 200 {
