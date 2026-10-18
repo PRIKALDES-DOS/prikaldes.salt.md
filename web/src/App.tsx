@@ -886,7 +886,14 @@ export default function App() {
   const createPage = useCallback(
     async (parentId: string | null, type: 'doc' | 'collection' = 'doc') => {
       // Root pages land in the selected workspace; children inherit the parent's.
-      const p = await api.createPage(parentId, '', type, undefined, parentId ? undefined : currentWs);
+      let p: PageMeta;
+      try {
+        p = await api.createPage(parentId, '', type, undefined, parentId ? undefined : currentWs);
+      } catch (e) {
+        // A refusal (a read-only workspace, say) used to end here unseen.
+        toast((e as Error).message || t('Could not be created'));
+        return;
+      }
       setPages((prev) => (prev ? [...prev, p] : [p]));
       navigate(p.id);
       // Land in the title: a new page is created to be named, and from ⌥N there
