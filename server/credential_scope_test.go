@@ -105,6 +105,11 @@ func TestAWorkspaceClosedToAgentsIsClosedForWriting(t *testing.T) {
 	if rec := f.bearer(f.openTok, "POST", "/api/pages", `{"title":"x","workspaceId":"`+f.team+`"}`); rec.Code != 403 {
 		t.Errorf("an agent created a page in a workspace closed to agents: %d", rec.Code)
 	}
+	// Nor can it carry a page in from outside.
+	outside := f.s.makePage(t, f.other, f.owner, "", "Notes from elsewhere", `{}`)
+	if rec := f.bearer(f.openTok, "PATCH", "/api/pages/"+outside, `{"workspaceId":"`+f.team+`"}`); rec.Code == 200 {
+		t.Error("an agent moved a page into a workspace closed to agents")
+	}
 	// People are not agents.
 	rec := requestAs(t, f.s, f.cookie, "PATCH", "/api/pages/"+page, `{"title":"Changed by a person"}`)
 	if rec.Code != 200 {
