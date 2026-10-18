@@ -169,10 +169,10 @@ export function AdminSettingsModal({ onClose }: { onClose: () => void }) {
     }
   };
 
-  const tunnel = async (action: string, token?: string) => {
+  const tunnel = async (action: string, token?: string, on?: boolean) => {
     setTunnelBusy(true);
     try {
-      await api.tunnelAction(action, token);
+      await api.tunnelAction(action, token, on);
       setPa(await api.publicAccess());
       if (action === 'start-token') setTunnelToken('');
     } catch (e) {
@@ -640,6 +640,48 @@ ingress:
                         </button>
                       </div>
                     </div>
+
+                    {pa?.cloudflaredHere && (
+                      <div className="pa-card">
+                        <strong>{t('cloudflared')}</strong>
+                        <p className="dialog-hint settings-hint">
+                          {pa.cloudflaredVersion
+                            ? t('Version {version} in use.', { version: pa.cloudflaredVersion })
+                            : t('The version in use could not be read.')}{' '}
+                          {pa.cloudflaredBehind &&
+                            t('{latest} is available.', { latest: pa.cloudflaredLatest })}
+                          {!pa.cloudflaredBehind && pa.cloudflaredLatest && t('That is the newest release.')}
+                          {!pa.cloudflaredManaged &&
+                            ' ' +
+                              t(
+                                'This copy was installed on the system, not by salt.md, so it is updated by whatever installed it.',
+                              )}
+                        </p>
+                        {pa.cloudflaredCheckError && (
+                          <p className="dialog-hint settings-hint pa-warn">{pa.cloudflaredCheckError}</p>
+                        )}
+                        {pa.cloudflaredManaged && (
+                          <div className="settings-row">
+                            <label className="settings-check">
+                              <input
+                                type="checkbox"
+                                checked={pa.cloudflaredAutoUpdate}
+                                disabled={tunnelBusy}
+                                onChange={(e) => void tunnel('cloudflared-autoupdate', undefined, e.target.checked)}
+                              />
+                              <span>{t('Keep it up to date automatically (checked daily, checksum verified)')}</span>
+                            </label>
+                            <button
+                              className="btn-sm"
+                              disabled={tunnelBusy || pa.cloudflaredUpdating}
+                              onClick={() => void tunnel('update-cloudflared')}
+                            >
+                              {tunnelBusy ? t('Please wait…') : t('Check now')}
+                            </button>
+                          </div>
+                        )}
+                      </div>
+                    )}
 
                     <div className="pa-card">
                       <strong>{t('3 · Straight to HTTPS (no Cloudflare, e.g. a VPS)')}</strong>

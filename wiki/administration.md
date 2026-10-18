@@ -203,7 +203,8 @@ including why mail is a convenience and never a dependency, are in
 Four routes to a public address, in the order the tab lists them:
 
 1. **Start quick tunnel**: a temporary `trycloudflare.com` address that changes
-   on every start. cloudflared is downloaded the first time.
+   on every start. cloudflared is downloaded the first time and then kept up to
+   date ([Keeping cloudflared current](domain.md#keeping-cloudflared-current)).
 2. A permanent Cloudflare tunnel: paste the token from the dashboard, press
    **Connect**. salt.md keeps it running across restarts.
 3. Built-in HTTPS: a domain field plus an **Active** switch; salt.md fetches

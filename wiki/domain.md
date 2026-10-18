@@ -119,9 +119,31 @@ not administer, and on a home line with no fixed address. No port forwarding.
 salt.md runs `cloudflared` itself. It looks for the program on the system's
 `PATH` first, then at `bin/cloudflared` inside the data directory
 (`bin/cloudflared.exe` on Windows), and only if neither has it does it download
-the official release over HTTPS. What triggers that download is a tunnel
-**start**: normally an admin pressing a button, but also the automatic restart
-of a stored tunnel after a reboot, which happens with nobody watching.
+the official release over HTTPS, checked against the SHA256 GitHub records for
+the file; a download that does not match is not installed. What triggers that
+download is a tunnel **start**: normally an admin pressing a button, but also
+the automatic restart of a stored tunnel after a reboot, which happens with
+nobody watching.
+
+### Keeping cloudflared current
+
+The copy salt.md downloaded is kept up to date. A few minutes after the server
+starts, and then once a day, salt.md asks for the newest cloudflared release;
+when it is newer than the one in `bin/`, the new file is downloaded, checked the
+same way, and put in place, and a running permanent tunnel is restarted on it,
+which takes it offline for a few seconds. A quick tunnel keeps running on the old
+file until it is started again, because a restart would change its address.
+Every update leaves a line in the log:
+`tunnel: cloudflared 2026.7.2 replaced by 2026.10.1 (checksum verified)`.
+
+Once cloudflared exists, the **Domain & proxy** tab shows a **cloudflared** card
+with the version in use, whether a newer one is out, **Keep it up to date
+automatically (checked daily, checksum verified)** (on by default) and
+**Check now**, which checks and updates at once. An instance that never started
+a tunnel never asks anybody anything.
+
+A cloudflared found on `PATH` is the system's: salt.md shows its version and
+that a newer one exists, and leaves updating it to whatever installed it.
 
 Builds exist for Linux (x86-64, arm64, 386, arm), macOS (x86-64, arm64) and
 Windows (x86-64). Anything else answers `install cloudflared manually`. Put the

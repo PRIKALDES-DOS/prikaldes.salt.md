@@ -27,6 +27,8 @@ type Server struct {
 	notices     string
 	addr        string
 	tunnel      tunnelState
+	// What the settings show about the cloudflared in use (tunnel_update.go).
+	cloudflared cloudflaredUpdates
 	// Agent keys from listed addresses only; see agent_addresses.go.
 	agentAddressList addressList
 	loginMu     sync.Mutex

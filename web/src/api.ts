@@ -185,9 +185,18 @@ export const api = {
       httpsDomain: string;
       httpsEnabled: boolean;
       localUrl: string;
+      // The cloudflared in use and the newest release (server/tunnel_update.go).
+      cloudflaredVersion: string;
+      cloudflaredLatest: string;
+      cloudflaredBehind: boolean;
+      cloudflaredManaged: boolean;
+      cloudflaredCheckedAt: string;
+      cloudflaredCheckError: string;
+      cloudflaredUpdating: boolean;
+      cloudflaredAutoUpdate: boolean;
     }>('/api/admin/public-access'),
-  tunnelAction: (action: string, token?: string) =>
-    req<unknown>('/api/admin/tunnel', { method: 'POST', body: JSON.stringify({ action, token }) }),
+  tunnelAction: (action: string, token?: string, on?: boolean) =>
+    req<unknown>('/api/admin/tunnel', { method: 'POST', body: JSON.stringify({ action, token, on }) }),
   auditPrune: () =>
     req<{ removed: number; days: number }>('/api/admin/audit-prune', { method: 'POST' }),
   putSettings: (patch: Record<string, unknown>) =>

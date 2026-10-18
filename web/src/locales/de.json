@@ -1102,5 +1102,13 @@
   "Add at least one address or network before switching this on.": "Trag mindestens eine Adresse oder ein Netz ein, bevor du das einschaltest.",
   "This instance accepts agent keys only from listed addresses, and {address} is not one of them.": "Diese Instanz nimmt Agenten-Schlüssel nur von eingetragenen Adressen an, und {address} gehört nicht dazu.",
   "You can only read this workspace, so nothing can be created or reordered in it.": "Diesen Workspace darfst du nur lesen, darum lässt sich darin nichts anlegen oder umsortieren.",
-  "There is no workspace this account may create pages in.": "Es gibt keinen Workspace, in dem dieses Konto Seiten anlegen darf."
+  "There is no workspace this account may create pages in.": "Es gibt keinen Workspace, in dem dieses Konto Seiten anlegen darf.",
+  "cloudflared": "cloudflared",
+  "Version {version} in use.": "Version {version} ist im Einsatz.",
+  "The version in use could not be read.": "Die Version im Einsatz ließ sich nicht lesen.",
+  "{latest} is available.": "{latest} ist verfügbar.",
+  "That is the newest release.": "Das ist die neueste Version.",
+  "This copy was installed on the system, not by salt.md, so it is updated by whatever installed it.": "Diese Kopie wurde auf dem System installiert, nicht von salt.md, und wird dort aktualisiert, wo sie herkommt.",
+  "Keep it up to date automatically (checked daily, checksum verified)": "Automatisch aktuell halten (täglich geprüft, mit Prüfsumme)",
+  "Check now": "Jetzt prüfen"
 }
