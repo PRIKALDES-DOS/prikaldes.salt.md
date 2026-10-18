@@ -167,6 +167,12 @@ A wrong password redisplays the form with **Wrong password.** in red. The
 password is sent in the form body, so it never appears in the address bar or in
 a browser history entry.
 
+Guessing is limited per link and per address: after five attempts in quick
+succession the form answers **Too many attempts. Wait a minute and try again.**,
+and after that ten attempts a minute get through. The limit is checked before
+the password is, so the right one waits too. Somebody else opening the same link
+from another address is not affected.
+
 Three properties of this that surprise people:
 
 - **There is no session.** Nothing is remembered after the page is shown, so
@@ -195,13 +201,11 @@ checklist items (as ticked boxes that cannot be clicked), quotes, code blocks,
 tables, dividers, callouts, toggles (which open and close), columns, bookmarks
 and links.
 
-Links behave in two different ways, which matters if the page was written by
-somebody else:
-
-- A link carried by a **file, image or bookmark block** is checked. Anything
-  that is not `http`, `https` or `mailto` is replaced by a dead link.
-- A link written **inside the text** goes out exactly as it was typed. It is not
-  checked and not rewritten.
+Every link is checked on the way out, whether a file, image or bookmark block
+carries it or it is written inside the text: anything that is not `http`,
+`https`, `mailto` or an address on the instance itself becomes a dead link. The
+page also tells the browser to run no script but its own layout script, so
+whatever a page's author typed, a visitor's click runs nothing.
 
 What is **not** in the document:
 
@@ -209,7 +213,7 @@ What is **not** in the document:
 | --- | --- |
 | Sub-pages | Nothing. Only the page you shared |
 | Links to other pages of your instance | A link into the app, which lands on the sign-in screen |
-| An embedded collection | A link into the app, labelled `▦ Datenbank` (fixed text, not the collection's name, and not the rows) |
+| An embedded collection | A link into the app, labelled `▦ Collection` (fixed text, not the collection's name, and not the rows) |
 | Files uploaded into this instance (images, attachments) | A broken image or a dead link: they sit at an address that needs a signed-in account. An image whose address points at another website loads normally |
 | The cover image | Nothing |
 | Properties of a database row | Nothing; only the row's title and body |
