@@ -119,6 +119,9 @@ export const api = {
       publicBaseUrl: string;
       trustProxy: boolean;
       allowUserWorkspaces: boolean;
+      agentAddressesOn: boolean;
+      agentAddresses: string;
+      anthropicAddresses: string;
       maxUploadMb: number;
       trashDays: number;
       auditDays: number;

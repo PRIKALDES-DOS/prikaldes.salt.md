@@ -33,6 +33,19 @@ export function serverMessage(code: string, fallback: string, data?: ErrorData):
       return t('Wrong email or wrong password.');
     case 'account_disabled':
       return t('This account has been deactivated. Talk to an admin.');
+
+    // ---- agent keys from listed addresses only ----
+    case 'agent_addresses_invalid':
+      return t('Line {line} of the address list is neither an address nor a network: {entry}', {
+        line: Number(data?.line ?? 0),
+        entry: String(data?.entry ?? ''),
+      });
+    case 'agent_addresses_empty':
+      return t('Add at least one address or network before switching this on.');
+    case 'agent_address_not_allowed':
+      return t('This instance accepts agent keys only from listed addresses, and {address} is not one of them.', {
+        address: String(data?.address ?? ''),
+      });
     case '2fa_required':
       return t('Please enter the 6-digit code from your authenticator app.');
     case '2fa_invalid':
