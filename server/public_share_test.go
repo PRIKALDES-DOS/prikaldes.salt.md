@@ -179,6 +179,11 @@ func TestPublicReaderHasNativeThemeAndNoPrintOrComments(t *testing.T) {
 	if !strings.Contains(r.Header().Get("Content-Security-Policy"), "script-src 'nonce-") || r.Header().Get("Referrer-Policy") != "no-referrer" {
 		t.Fatal("public document guards missing")
 	}
+	_, nonceTail, _ := strings.Cut(r.Header().Get("Content-Security-Policy"), "'nonce-")
+	nonce, _, _ := strings.Cut(nonceTail, "'")
+	if nonce == "" || strings.Count(h, `<script nonce="`+nonce+`">`) != 2 {
+		t.Fatal("reader scripts do not carry the response policy nonce")
+	}
 	api := publicRequest(s, "GET", "/api/public/"+token, "", nil)
 	var payload map[string]any
 	json.Unmarshal(api.Body.Bytes(), &payload)
@@ -222,4 +227,25 @@ func TestPublicAssetFastPathPreservesReferenceAuthority(t *testing.T) {
 			if got := publicPageReferencesFile(p, "a.png"); got != tc.want { t.Fatalf("got %v, want %v", got, tc.want) }
 		})
 	}
+}
+
+func TestPublicAssetsSharePasswordBudgetWithHTMLAndJSON(t *testing.T) {
+	s, token, _ := shareFixture(t)
+	s.db.Exec(`UPDATE share_links SET password_hash=? WHERE token_hash=?`, tokenHash(token+":correct"), tokenHash(token))
+	request := func(path, password, ip string) int {
+		r := httptest.NewRequest("GET", path, nil)
+		r.RemoteAddr = ip + ":40000"
+		r.Header.Set("X-Share-Password", password)
+		w := httptest.NewRecorder()
+		s.ServeHTTP(w, r)
+		if w.Header().Get("Cache-Control") != "private, no-store" { t.Fatal("public response is cacheable") }
+		return w.Code
+	}
+	asset := "/public/" + token + "/files/shared.png"
+	for i := 0; i < 8; i++ { request(asset, "wrong", "203.0.113.5") }
+	if request(asset, "correct", "203.0.113.5") != 429 || request("/api/public/"+token, "correct", "203.0.113.5") != 429 { t.Fatal("asset guesses bypass the shared password budget") }
+	if request(asset, "correct", "198.51.100.2") != 200 { t.Fatal("another visitor was locked out") }
+	other := strings.Repeat("c", 36)
+	s.db.Exec(`INSERT INTO share_links(token_hash,page_id,created_at,password_hash) VALUES(?,'shared-page',?,?)`, tokenHash(other), now(), tokenHash(other+":correct"))
+	if request("/public/"+other+"/files/shared.png", "correct", "203.0.113.5") != 200 { t.Fatal("another link was locked out") }
 }
