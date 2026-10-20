@@ -370,7 +370,13 @@ export default function CollectionView({ collectionId, pages, tagColors, onNavig
     const onRows = (e: Event) => {
       if ((e as CustomEvent<string>).detail !== collectionId) return;
       window.clearTimeout(timer);
-      timer = window.setTimeout(() => void loadRows(), 400);
+      // The schema and the views too: the event also stands for a new
+      // property or a changed view, and a tab that kept its first copy of
+      // those drew the database as it was when it opened.
+      timer = window.setTimeout(() => {
+        void loadRows();
+        loadConfig();
+      }, 400);
     };
     window.addEventListener('salt:rows', onRows);
     // Somebody pulled down, or pressed sync. Not debounced and not conditional:
@@ -392,9 +398,17 @@ export default function CollectionView({ collectionId, pages, tagColors, onNavig
   const view = view0;
   const schema = config?.schema ?? [];
 
+  // Only the half that changed goes to the server. Sending both put this tab's
+  // copy of the schema back on every view change, and that copy is as old as
+  // the tab: a property an agent or a colleague added meanwhile vanished again
+  // the moment somebody here resized a column.
   const saveConfig = async (next: CollectionConfig) => {
+    const patch: Partial<CollectionConfig> = {};
+    if (!config || next.schema !== config.schema) patch.schema = next.schema;
+    if (!config || next.views !== config.views) patch.views = next.views;
     setConfig(next);
-    await api.putCollection(collectionId, next);
+    if (!patch.schema && !patch.views) return;
+    await api.putCollection(collectionId, patch);
   };
 
   const addRow = async (presetProps?: Record<string, unknown>) => {

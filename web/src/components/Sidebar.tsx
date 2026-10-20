@@ -1126,6 +1126,9 @@ export default function Sidebar({
   };
 
   const activeWs = workspaces.find((w) => w.id === currentWs);
+  // A viewer may only read the workspace; the server refuses anything new at
+  // its top level, so the sidebar offers nothing that would fail.
+  const canCreateTop = activeWs?.role !== 'viewer';
   // Split the top level into documents vs databases so the sidebar shows them
   // as clearly separated sections (nested items stay under their parent).
   // MIXED: one tree, everything where it was filed. A documentation workspace
@@ -1468,7 +1471,7 @@ export default function Sidebar({
               icon={<FileText size={17} />}
               count={allDocs.length}
               createTitle={t('New page')}
-              onCreate={() => onCreate(null)}
+              onCreate={canCreateTop ? () => onCreate(null) : undefined}
             >
               {topDocs.length ? (
                 topDocs.map((p) => <TreeItem key={p.id} p={p} depth={0} ctx={ctx} />)
@@ -1487,7 +1490,7 @@ export default function Sidebar({
             icon={<Table2 size={17} />}
             count={allDbs.length}
             createTitle={t('New collection')}
-            onCreate={() => onCreate(null, 'collection')}
+            onCreate={canCreateTop ? () => onCreate(null, 'collection') : undefined}
           >
             {topDbs.length ? (
               topDbs.map((p) => <TreeItem key={p.id} p={p} depth={0} ctx={ctx} section="dbs" />)

@@ -7,7 +7,7 @@ import {
 import { filterSuggestionItems, insertOrUpdateBlockForSlashMenu } from '@blocknote/core';
 import { en as coreEn } from '@blocknote/core/locales';
 import { BlockNoteView } from '@blocknote/mantine';
-import { api } from '../api';
+import { api, ApiError, materializeQuery } from '../api';
 import { toast } from '../toast';
 import type { Backlink, CollectionConfig, Page, PageMeta, PropOption, User } from '../types';
 import { SaltProvider } from '../collab';
@@ -422,7 +422,8 @@ function RowProperties({
     };
     setConfig(next);
     try {
-      await api.putCollection(parentId, next);
+      // The schema alone: this copy of the views is as old as the open page.
+      await api.putCollection(parentId, { schema: next.schema });
     } catch {
       toast(t('Options not saved'));
     }
@@ -496,18 +497,27 @@ function PageHeader({
   const [shareCopied, setShareCopied] = useState(false);
   useEffect(() => { if (!shareCopied) return; const timer = setTimeout(() => setShareCopied(false), 1600); return () => clearTimeout(timer); }, [shareCopied]);
   // The server's shared flag survives navigation; the local states do not, so
-  // both are reset here. shareOff masks a just-revoked link the list still
+  // they are reset here. shareOff masks a just-revoked link the list still
   // reports until it reloads.
   const [shareOff, setShareOff] = useState(false);
+  const [shareExpiry, setShareExpiry] = useState(0); // days; 0 = never
+  const [sharePassword, setSharePassword] = useState('');
+  // What the link on screen was made with. A changed expiry or password then
+  // offers a new link instead of quietly replacing the one just copied.
+  const [madeWith, setMadeWith] = useState<{ days: number; password: string } | null>(null);
+  const [shareBusy, setShareBusy] = useState(false);
   useEffect(() => {
     setShareUrl(null);
     setShareCopied(false);
     setShareOff(false);
     setShareOpen(false);
+    setShareExpiry(0);
+    setSharePassword('');
+    setMadeWith(null);
   }, [pageId]);
   const isShared = shareUrl != null || (!!page.shared && !shareOff);
-  const [shareExpiry, setShareExpiry] = useState(0); // days; 0 = never
-  const [sharePassword, setSharePassword] = useState('');
+  const shareSettingsChanged =
+    madeWith != null && (madeWith.days !== shareExpiry || madeWith.password !== sharePassword);
   const [overflowOpen, setOverflowOpen] = useState(false);
   // Dropdowns must close on an outside click / Escape, not just mouse-leave.
   const shareWrapRef = useRef<HTMLDivElement>(null);
@@ -645,41 +655,57 @@ function PageHeader({
     api.updatePage(pageId, { visibility: next }).catch(() => toast(t('Visibility not saved')));
   };
 
-  const createShare = async (days: number, password: string) => {
+  // One request at a time: two in flight can answer out of order and leave the
+  // address of a link the second one already replaced in the field.
+  const createShare = async () => {
+    if (shareBusy) return;
+    setShareBusy(true);
     try {
-      const res = await api.sharePage(pageId, days, password);
+      const res = await api.sharePage(pageId, shareExpiry, sharePassword);
       // Absolute URL on the external domain when configured; else current origin.
       setShareCopied(false);
       setShareUrl(res.url.startsWith('http') ? res.url : location.origin + res.url);
+      setShareCopied(false);
+      setMadeWith({ days: shareExpiry, password: sharePassword });
       setShareOff(false);
       onPagesChanged();
     } catch {
       toast(t('Sharing failed'));
+    } finally {
+      setShareBusy(false);
     }
   };
 
-  // Opening the menu publishes a page that is not shared yet. A page that is
-  // keeps its link: the server stores only a hash of the token, so the address
-  // cannot be shown again, and minting a new one on open broke it for everyone
-  // who had it. The globe marker made exactly that click the inviting one.
-  const openShare = async () => {
-    setShareOpen((o) => !o);
-    if (!shareUrl && !isShared) await createShare(shareExpiry, sharePassword);
-  };
+  // The globe only opens the menu. It used to publish an unshared page on the
+  // spot, so looking at a page's sharing state shared it, and checking whether
+  // Stop sharing had worked published the page again under a fresh link (#68).
+  // A link exists only after Create link or New link. The expiry and the
+  // password apply to the next link and never re-mint one by themselves: that
+  // replaced the address somebody had just copied.
+  const openShare = () => setShareOpen((o) => !o);
 
-  const changeExpiry = async (days: number) => {
-    setShareExpiry(days);
-    // Re-mint the link with the new settings (the server replaces the old token).
-    await createShare(days, sharePassword);
-  };
+  // Over plain http there is no clipboard API at all; the field selects itself
+  // on focus for that case.
+
 
   const stopShare = async () => {
-    await api.unsharePage(pageId).catch(() => {});
-    setShareUrl(null);
-    setShareCopied(false);
-    setShareOff(true);
-    setShareOpen(false);
-    onPagesChanged();
+    if (shareBusy) return;
+    setShareBusy(true);
+    try {
+      await api.unsharePage(pageId);
+      setShareUrl(null);
+      setMadeWith(null);
+      setShareCopied(false);
+      setShareOff(true);
+      setShareOpen(false);
+      onPagesChanged();
+    } catch {
+      // A refused revoke used to look like a successful one: the menu closed and
+      // the marker went away while the link kept working.
+      toast(t('Could not stop sharing'));
+    } finally {
+      setShareBusy(false);
+    }
   };
 
   const saveMeta = (patch: { title?: string; icon?: string; cover?: string; tags?: string[]; description?: string }) => {
@@ -881,58 +907,81 @@ function PageHeader({
             <button className={'icon-btn topbar-wide-only' + (isShared ? ' shared-active' : '')} title={isShared ? t('Shared') : t('Share to web (read-only link)')} onClick={openShare}>
               <Globe size={17} />
             </button>
-            {shareOpen && !shareUrl && isShared && (
+            {shareOpen && (
               <div className="menu share-menu">
-                <div className="share-hint">
-                  {t('This page is shared publicly. Its address was only shown when the link was made.')}
-                </div>
-                <div className="share-hint">{t('A new link stops the old one from working.')}</div>
-                <div className="share-actions">
-                  <button className="btn-sm" onClick={() => void createShare(shareExpiry, sharePassword)}>
-                    {t('New link')}
-                  </button>
-                  <button className="btn-sm danger" onClick={stopShare}>
-                    {t('Stop sharing')}
-                  </button>
-                </div>
-              </div>
-            )}
-            {shareOpen && (shareUrl || !isShared) && (
-              <div className="menu share-menu">
-                <div className="share-hint">{t('Anyone with this link can view this page (read-only).')}</div>
-                <div className="share-link-row">
-                  <input className="share-input" readOnly aria-label={t('Public link')} value={shareUrl ?? t('Creating…')} onFocus={(e) => e.currentTarget.select()} />
-                  <button className="icon-btn share-copy" disabled={!shareUrl} title={t(shareCopied ? 'Copied' : 'Copy link')} aria-label={t(shareCopied ? 'Copied' : 'Copy link')} onClick={async () => { if (!shareUrl) return; try { await navigator.clipboard.writeText(shareUrl); setShareCopied(true); } catch { toast(t('Copy failed; select the link')); } }}>
-                    {shareCopied ? <Check size={16} /> : <Copy size={16} />}
-                  </button>
-                  <span className="share-copy-status" role="status">{shareCopied ? t('Copied') : ''}</span>
-                </div>
-                <label className="share-expiry">
-                  {t('Expires:')}
-                  <select
-                    className="prop-select"
-                    value={shareExpiry}
-                    onChange={(e) => void changeExpiry(Number(e.target.value))}
-                  >
-                    <option value={0}>{t('Never')}</option>
-                    <option value={1}>{t('In 1 day')}</option>
-                    <option value={7}>{t('In 7 days')}</option>
-                    <option value={30}>{t('In 30 days')}</option>
-                  </select>
-                </label>
-                <input
-                  className="share-input"
-                  type="password"
-                  placeholder={t('Password (optional)')}
-                  value={sharePassword}
-                  onChange={(e) => setSharePassword(e.target.value)}
-                  onBlur={() => void createShare(shareExpiry, sharePassword)}
-                />
-                <div className="share-actions">
-                  <button className="btn-sm danger" onClick={stopShare}>
-                    {t('Stop sharing')}
-                  </button>
-                </div>
+                {shareUrl ? (
+                  <>
+                    <div className="share-hint">{t('Anyone with this link can view this page (read-only).')}</div>
+                    <div className="share-link-row">
+                      <input className="share-input" readOnly aria-label={t('Public link')} value={shareUrl} onFocus={(e) => e.currentTarget.select()} />
+                      <button className="icon-btn share-copy" title={shareCopied ? t('Copied') : t('Copy link')} aria-label={shareCopied ? t('Copied') : t('Copy link')} onClick={async () => { try { await navigator.clipboard.writeText(shareUrl); setShareCopied(true); } catch { toast(t('Copy failed; select the link')); } }}>
+                        {shareCopied ? <Check size={16} /> : <Copy size={16} />}
+                      </button>
+                      <span className="share-copy-status" role="status">{shareCopied ? t('Copied') : ''}</span>
+                    </div>
+                  </>
+                ) : isShared ? (
+                  <div className="share-hint">
+                    {t('This page is shared publicly. Its address was only shown when the link was made.')}
+                  </div>
+                ) : (
+                  <div className="share-hint">{t('This page is not public. A link lets anyone who has it read the page.')}</div>
+                )}
+                {canEdit ? (
+                  <>
+                    <label className="share-expiry">
+                      {t('Expires:')}
+                      <select
+                        className="prop-select"
+                        value={shareExpiry}
+                        onChange={(e) => setShareExpiry(Number(e.target.value))}
+                      >
+                        <option value={0}>{t('Never')}</option>
+                        <option value={1}>{t('In 1 day')}</option>
+                        <option value={7}>{t('In 7 days')}</option>
+                        <option value={30}>{t('In 30 days')}</option>
+                      </select>
+                    </label>
+                    {/* new-password: a browser must not fill the account's own
+                        password in here. */}
+                    <input
+                      className="share-input"
+                      type="password"
+                      autoComplete="new-password"
+                      placeholder={t('Password (optional)')}
+                      value={sharePassword}
+                      onChange={(e) => setSharePassword(e.target.value)}
+                      onKeyDown={(e) => {
+                        if (e.key === 'Enter' && (!shareUrl || shareSettingsChanged)) {
+                          e.preventDefault();
+                          void createShare();
+                        }
+                      }}
+                    />
+                    {isShared && (!shareUrl || shareSettingsChanged) && (
+                      <div className="share-hint">{t('A new link stops the old one from working.')}</div>
+                    )}
+                    <div className="share-actions">
+                      {!isShared && (
+                        <button className="btn-sm" disabled={shareBusy} onClick={() => void createShare()}>
+                          {t('Create link')}
+                        </button>
+                      )}
+                      {isShared && (!shareUrl || shareSettingsChanged) && (
+                        <button className="btn-sm" disabled={shareBusy} onClick={() => void createShare()}>
+                          {t('New link')}
+                        </button>
+                      )}
+                      {isShared && (
+                        <button className="btn-sm danger" disabled={shareBusy} onClick={() => void stopShare()}>
+                          {t('Stop sharing')}
+                        </button>
+                      )}
+                    </div>
+                  </>
+                ) : (
+                  <div className="share-hint">{t('Only people who can edit this page can share it or stop sharing it.')}</div>
+                )}
               </div>
             )}
           </div>
@@ -1424,6 +1473,7 @@ function CollabEditor({ page, user, theme, canEdit, onReset, ...rest }: CollabPr
   useEffect(() => {
     const p = new SaltProvider(
       page.id,
+      page.docGen ?? null,
       (isNew) => {
         // Seed a brand-new CRDT doc from the page's stored content once.
         if (isNew && Array.isArray(page.content) && page.content.length > 0) {
@@ -1684,13 +1734,23 @@ function BlockContent({
         onItemClick: () => insertOrUpdateBlockForSlashMenu(editor, { type: 'subpages' } as never),
       },
     ];
-    return filterSuggestionItems(
+    const matches = filterSuggestionItems(
       [
         ...getDefaultReactSlashMenuItems(editor),
         ...custom,
       ],
       query,
     );
+    // The menu keys headings by group. Repeated, non-adjacent groups create
+    // duplicate React keys and leave stale headings behind when filtering.
+    // Keep each group contiguous, with the first occurrence defining its order.
+    const groups = new Map<string | undefined, typeof matches>();
+    for (const item of matches) {
+      const group = groups.get(item.group);
+      if (group) group.push(item);
+      else groups.set(item.group, [item]);
+    }
+    return [...groups.values()].flat();
   };
 
   // Page-link menu (shared by the "@" mention trigger and the "[[" wiki-link
@@ -1791,22 +1851,40 @@ function BlockContent({
   useEffect(() => {
     const flush = (keepalive: boolean) => {
       if (seedFailed.current || !dirty.current) return;
+      // The document was replaced from outside the editor (an agent's rewrite,
+      // a restore, an import): this copy is of the old one. The 4001 that says
+      // so is also what unmounts us, so this is the flush that used to put the
+      // old text back over the new (#79). Named by its generation, the server
+      // refuses it and keeps it in the page history; a server that sends no
+      // generation would write it, so then it is dropped.
+      if (provider.replacedDoc && provider.gen === null) {
+        dirty.current = false;
+        return;
+      }
       const doc = editor.document;
       // Guard against clobbering stored content with an accidentally-empty doc.
       if (hadContent && isEffectivelyEmpty(doc)) return;
       dirty.current = false;
+      // Named so the server can refuse a copy of a replaced document even when
+      // the 4001 never reached this tab (server/docgen.go).
+      const opts = { materialize: true, gen: provider.gen, replaced: provider.replacedDoc };
       if (keepalive) {
         // Unmount (e.g. following a link chip): a normal fetch would be
         // cancelled, so use keepalive to guarantee the write — otherwise the
         // just-inserted @-mention's backlink would never be recorded.
-        void fetch(`/api/pages/${provider.pageId}?materialize=1`, {
+        void fetch(`/api/pages/${provider.pageId}${materializeQuery(opts)}`, {
           method: 'PATCH',
           headers: { 'Content-Type': 'application/json' },
           body: JSON.stringify({ content: doc }),
           keepalive: true,
         });
       } else {
-        api.updatePage(provider.pageId, { content: doc }, { materialize: true }).catch(() => {
+        api.updatePage(provider.pageId, { content: doc }, opts).catch((e: unknown) => {
+          if (e instanceof ApiError && e.code === 'doc_replaced') {
+            // Replaced while our socket was down: reload onto the new document.
+            provider.replaced();
+            return;
+          }
           dirty.current = true; // retry on next change / unmount flush
           toast(t('Page content not saved'));
         });

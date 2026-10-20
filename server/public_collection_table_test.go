@@ -54,9 +54,10 @@ func TestPublicCollectionTableEmptyAndCellValues(t *testing.T) {
 	options := map[string]string{"status/a": "Alpha", "status/b": "Beta"}
 	for _, pair := range []struct {
 		value any
+		kind string
 		want  string
-	}{{[]any{"a", "b"}, "Alpha, Beta"}, {false, ""}, {true, "✓"}, {float64(3.25), "3.2500"}, {float64(3), "3"}, {nil, ""}} {
-		if got := publicCollectionCell(pair.value, "status", options); got != pair.want {
+	}{{[]any{"a", "b"}, "multiselect", "Alpha, Beta"}, {false, "checkbox", ""}, {true, "checkbox", "✓"}, {float64(3.25), "number", "3.25"}, {float64(3), "number", "3"}, {nil, "text", ""}} {
+		if got := publicCollectionTypedCell(pair.value, pair.kind, "status", options); got != pair.want {
 			t.Fatalf("cell %v = %q", pair.value, got)
 		}
 	}
@@ -105,5 +106,21 @@ func TestPublicCollectionRowLimit(t *testing.T) {
 	got, err := s.publicCollectionTable(p)
 	if err != nil || strings.Count(got, `scope="row"`) != 1000 || !strings.Contains(got, "2 more rows.") {
 		t.Fatal("row budget", err)
+	}
+}
+
+func TestPublicCollectionRemainderUsesSingular(t *testing.T) {
+	s := testServer(t)
+	user, _ := signedIn(t, s, "singular@example.test")
+	ws := makeWorkspace(t, s, user)
+	seedPage(t, s, "single-extra", "", ws, user, "workspace", `[]`)
+	s.db.Exec(`INSERT INTO collections(page_id,schema,views)VALUES('single-extra','[]','[]')`)
+	for i := 0; i < 1001; i++ {
+		seedPage(t, s, fmt.Sprint("singular-row-", i), "single-extra", ws, user, "workspace", `[]`)
+	}
+	p, _ := s.getPage("single-extra")
+	got, err := s.publicCollectionTable(p)
+	if err != nil || !strings.Contains(got, "1 more row.") || strings.Contains(got, "1 more rows.") {
+		t.Fatal("singular remainder", err)
 	}
 }

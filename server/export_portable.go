@@ -15,11 +15,10 @@ import (
 // Downloaded documents cannot resolve authenticated root-relative uploads from
 // file://. Embed only this page's referenced uploads; never fetch remote URLs.
 func (s *Server) portableExportHTML(p *page, r *http.Request) (string, error) {
-	scheme := "http"
-	if isHTTPS(r) {
-		scheme = "https"
+	origin, err := url.Parse(s.publicShareBase(r) + "/")
+	if err != nil {
+		return "", err
 	}
-	origin := &url.URL{Scheme: scheme, Host: r.Host}
 	root, err := os.OpenRoot(filepath.Join(s.dataDir, "files"))
 	if err == nil {
 		defer root.Close()

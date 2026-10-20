@@ -119,9 +119,31 @@ not administer, and on a home line with no fixed address. No port forwarding.
 salt.md runs `cloudflared` itself. It looks for the program on the system's
 `PATH` first, then at `bin/cloudflared` inside the data directory
 (`bin/cloudflared.exe` on Windows), and only if neither has it does it download
-the official release over HTTPS. What triggers that download is a tunnel
-**start**: normally an admin pressing a button, but also the automatic restart
-of a stored tunnel after a reboot, which happens with nobody watching.
+the official release over HTTPS, checked against the SHA256 GitHub records for
+the file; a download that does not match is not installed. What triggers that
+download is a tunnel **start**: normally an admin pressing a button, but also
+the automatic restart of a stored tunnel after a reboot, which happens with
+nobody watching.
+
+### Keeping cloudflared current
+
+The copy salt.md downloaded is kept up to date. A few minutes after the server
+starts, and then once a day, salt.md asks for the newest cloudflared release;
+when it is newer than the one in `bin/`, the new file is downloaded, checked the
+same way, and put in place, and a running permanent tunnel is restarted on it,
+which takes it offline for a few seconds. A quick tunnel keeps running on the old
+file until it is started again, because a restart would change its address.
+Every update leaves a line in the log:
+`tunnel: cloudflared 2026.7.2 replaced by 2026.10.1 (checksum verified)`.
+
+Once cloudflared exists, the **Domain & proxy** tab shows a **cloudflared** card
+with the version in use, whether a newer one is out, **Keep it up to date
+automatically (checked daily, checksum verified)** (on by default) and
+**Check now**, which checks and updates at once. An instance that never started
+a tunnel never asks anybody anything.
+
+A cloudflared found on `PATH` is the system's: salt.md shows its version and
+that a newer one exists, and leaves updating it to whatever installed it.
 
 Builds exist for Linux (x86-64, arm64, 386, arm), macOS (x86-64, arm64) and
 Windows (x86-64). Anything else answers `install cloudflared manually`. Put the
@@ -286,8 +308,14 @@ proxy**: those headers are written by whoever is calling, so trusting them
 without a proxy in front lets an attacker invent a new IP for every password
 guess.
 
-`X-Forwarded-For` is read first, `X-Real-Ip` when that one is absent, so a proxy
-that sets only the latter works too. Nothing else is consulted. The hint under
+Of `X-Forwarded-For` only the **last** address counts: the one your proxy added.
+Everything before it was written by the caller, and a proxy that appends (the
+built-in tunnel does, and so does nginx's usual `$proxy_add_x_forwarded_for`)
+passes it on as it came. `X-Real-Ip` is read when `X-Forwarded-For` is absent,
+so a proxy that sets only the latter works too. Nothing else is consulted. With
+two proxies in a row, have the inner one resolve the visitor first (in nginx,
+the real IP module, told which addresses belong to the outer proxy), or every
+visitor arrives as the outer proxy. The hint under
 the checkbox also mentions the audit log; that is the one place an address never
 goes. The activity log records who did what, never from where.
 

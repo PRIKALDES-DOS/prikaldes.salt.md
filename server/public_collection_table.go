@@ -91,42 +91,18 @@ func (s *Server) publicCollectionTable(p *page, nonces ...string) (string, error
 	}
 	body.WriteString(`</tbody></table></div>`)
 	if total > count {
-		body.WriteString(`<p>` + strconv.Itoa(total-count) + ` more rows.</p>`)
+		noun := "rows"
+		if total-count == 1 {
+			noun = "row"
+		}
+		body.WriteString(`<p>` + strconv.Itoa(total-count) + ` more ` + noun + `.</p>`)
 	}
 	return s.publicDocument(title, `<style>`+publicCollectionStyle+`</style>`+body.String(), nonce), nil
 }
 
-func publicCollectionCell(value any, property string, options map[string]string) string {
-	option := func(raw string) string {
-		if name, ok := options[property+"/"+raw]; ok {
-			return name
-		}
-		return raw
-	}
-	switch v := value.(type) {
-	case string:
-		return option(v)
-	case bool:
-		if v {
-			return "✓"
-		}
-	case float64:
-		return strings.TrimSuffix(strings.TrimSuffix(fmt.Sprintf("%.4f", v), "0000"), ".")
-	case []any:
-		var parts []string
-		for _, item := range v {
-			if text, ok := item.(string); ok {
-				parts = append(parts, option(text))
-			}
-		}
-		return strings.Join(parts, ", ")
-	}
-	return ""
-}
-
 // Only the table scrolls on a small screen; headings and empty states remain
 // part of the ordinary document flow. Native tokens come from the app build.
-const publicCollectionStyle = `*{box-sizing:border-box}.public-collection{margin:0;height:auto;min-height:100vh;background:var(--bg,#fbfaf7);color:var(--fg,#1c1a15);font:16px/1.6 var(--mono,ui-monospace,monospace)}.public-view .public-doc{max-width:1100px;margin:auto;padding:48px 32px}.public-doc h1{font-size:clamp(28px,4vw,40px);line-height:1.2;margin:0 0 20px}.collection-description{color:var(--muted,#7e7d78);margin:0 0 24px}.collection-scroll{overflow:auto;max-width:100%;border:1px solid var(--border,#ddd);border-radius:var(--radius,10px)}.public-view .collection-scroll{scrollbar-width:auto}.public-view .collection-scroll::-webkit-scrollbar{display:block;height:12px;width:12px}.public-view .collection-scroll::-webkit-scrollbar-thumb{background:var(--muted,#7e7d78);border-radius:6px}.public-view .collection-scroll::-webkit-scrollbar-track{background:var(--hover,#eee)}.collection-scroll:focus-visible{outline:2px solid var(--accent,#b3123f);outline-offset:3px}.collection-scroll table{border-collapse:collapse;min-width:100%;width:max-content;margin:0}.collection-scroll th,.collection-scroll td{min-width:140px;max-width:360px;padding:12px 16px;text-align:left;vertical-align:top;white-space:pre-wrap;overflow-wrap:anywhere;border-right:1px solid var(--border,#ddd);border-bottom:1px solid var(--border,#ddd)}.collection-scroll thead{background:var(--sidebar-bg,#f2f1ea)}.collection-scroll thead th{font-size:13px;font-weight:600;color:var(--muted,#7e7d78)}.collection-scroll tbody th{font-weight:500}.collection-scroll tr>*:last-child{border-right:0}.collection-scroll tbody tr:last-child>*{border-bottom:0}.collection-scroll .collection-empty{padding:32px;text-align:center;color:var(--muted,#7e7d78)}@media(max-width:600px){.public-view .public-doc{padding:28px 16px}}@media print{.public-collection{background:white;color:black}.public-view .public-doc{padding:0;max-width:none}.collection-scroll{overflow:visible}.collection-scroll table{width:100%;table-layout:fixed}.collection-scroll th,.collection-scroll td{min-width:0}}`
+const publicCollectionStyle = `*{box-sizing:border-box}.public-collection{margin:0;height:auto;min-height:100vh;background:var(--bg,#fbfaf7);color:var(--fg,#1c1a15);font:16px/1.6 var(--mono,ui-monospace,monospace)}.public-view .public-doc{max-width:1100px;margin:auto;padding:48px 32px}.public-doc h1{font-size:clamp(28px,4vw,40px);line-height:1.2;margin:0 0 20px}.collection-description{color:var(--muted,#7e7d78);margin:0 0 24px}.collection-scroll{overflow:auto;max-width:100%;max-height:70vh;border:1px solid var(--border,#ddd);border-radius:var(--radius,10px)}.public-view .collection-scroll{scrollbar-width:auto}.public-view .collection-scroll::-webkit-scrollbar{display:block;height:12px;width:12px}.public-view .collection-scroll::-webkit-scrollbar-thumb{background:var(--muted,#7e7d78);border-radius:6px}.public-view .collection-scroll::-webkit-scrollbar-track{background:var(--hover,#eee)}.collection-scroll:focus-visible{outline:2px solid var(--accent,#b3123f);outline-offset:3px}.collection-scroll table{border-collapse:collapse;min-width:100%;width:max-content;margin:0}.collection-scroll th,.collection-scroll td{min-width:140px;max-width:360px;padding:12px 16px;text-align:left;vertical-align:top;white-space:pre-wrap;overflow-wrap:anywhere;border-right:1px solid var(--border,#ddd);border-bottom:1px solid var(--border,#ddd)}.collection-scroll thead{background:var(--sidebar-bg,#f2f1ea)}.collection-scroll thead th{position:sticky;top:0;z-index:1;background:var(--sidebar-bg,#f2f1ea);font-size:13px;font-weight:600;color:var(--muted,#7e7d78)}.collection-scroll tbody th{font-weight:500}.collection-scroll tr>*:last-child{border-right:0}.collection-scroll tbody tr:last-child>*{border-bottom:0}.collection-scroll .collection-empty{padding:32px;text-align:center;color:var(--muted,#7e7d78)}@media(max-width:600px){.public-view .public-doc{padding:28px 16px}}@media print{.public-collection{background:white;color:black}.public-view .public-doc{padding:0;max-width:none}.collection-scroll{overflow:visible;max-height:none}.collection-scroll thead th{position:static}.collection-scroll table{width:100%;table-layout:fixed}.collection-scroll th,.collection-scroll td{min-width:0}}`
 
 // Values from an old property type must not survive a schema change. Relations
 // and people stay blank rather than exposing internal IDs or unpublished names.

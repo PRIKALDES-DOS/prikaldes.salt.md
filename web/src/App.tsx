@@ -886,7 +886,14 @@ export default function App() {
   const createPage = useCallback(
     async (parentId: string | null, type: 'doc' | 'collection' = 'doc') => {
       // Root pages land in the selected workspace; children inherit the parent's.
-      const p = await api.createPage(parentId, '', type, undefined, parentId ? undefined : currentWs);
+      let p: PageMeta;
+      try {
+        p = await api.createPage(parentId, '', type, undefined, parentId ? undefined : currentWs);
+      } catch (e) {
+        // A refusal (a read-only workspace, say) used to end here unseen.
+        toast((e as Error).message || t('Could not be created'));
+        return;
+      }
       setPages((prev) => (prev ? [...prev, p] : [p]));
       navigate(p.id);
       // Land in the title: a new page is created to be named, and from ⌥N there
@@ -956,14 +963,24 @@ export default function App() {
 
   const trashPage = useCallback(
     async (id: string) => {
+      // Collection rows are excluded from the tree list. Resolve their parent
+      // before trashing them, while the server can still return the page.
+      const deleted = activeRef.current === id ? await api.getPage(id) : null;
       await api.trashPage(id);
-      // Leaving you on the page you just threw away was harmless while this was
-      // reachable from the sidebar only — there you are usually looking at
-      // something else. The page's own menu can do it now, so it has to move.
-      if (id === currentId) navigate(null);
+      // Check the current selection after the request: the user may have
+      // navigated elsewhere while deletion was pending.
+      if (activeRef.current === id) navigate(deleted?.parentId ?? null, true);
+      // Rows absent from /api/pages cannot be pruned by the tree refresh.
+      setOpenTabs((prev) => prev.filter((tab) => tab !== id));
+      setExtraPages((prev) => {
+        if (!prev.has(id)) return prev;
+        const next = new Map(prev);
+        next.delete(id);
+        return next;
+      });
       await loadPages();
     },
-    [loadPages, currentId, navigate],
+    [loadPages, navigate],
   );
 
   const duplicatePage = useCallback(
@@ -1248,6 +1265,7 @@ export default function App() {
               setIndexOpen(false);
               navigate(id);
             }}
+            onOpenInNewTab={openInNewTab}
             onClose={() => setIndexOpen(false)}
           />
         ) : currentId ? (

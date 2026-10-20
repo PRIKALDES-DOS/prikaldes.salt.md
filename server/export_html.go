@@ -1,9 +1,11 @@
 package server
 
 import (
+	"crypto/rand"
 	"encoding/base64"
 	"encoding/json"
 	"html"
+	"net/http"
 	"net/url"
 	"regexp"
 	"strconv"
@@ -63,7 +65,10 @@ func inlineHTML(raw json.RawMessage) string {
 	for _, it := range items {
 		switch it.Type {
 		case "link":
-			b.WriteString(`<a href="` + html.EscapeString(it.Href) + `">` + inlineHTML(it.Content) + "</a>")
+			// Through safeURL like every other address on the page. A link typed
+			// as javascript:… went out as it was, and one click ran it with the
+			// session of whoever opened the print view or the shared page.
+			b.WriteString(`<a href="` + html.EscapeString(safeURL(it.Href)) + `">` + inlineHTML(it.Content) + "</a>")
 		case "pageLink":
 			label := strProp(it.Props, "label", "Untitled")
 			id := strProp(it.Props, "pageId", "")
@@ -325,6 +330,9 @@ type printOptions struct {
 	Region   string
 	Language string
 	CommentL []commentJSON
+	// Nonce is the one script the document may run (see docCSP). Empty for a
+	// file that is downloaded: no header travels with it.
+	Nonce string
 }
 
 // printOptionsFor reads the instance's defaults. They are settings rather than
@@ -546,12 +554,18 @@ func (srv *Server) pageHTML(p *page, printMode bool, o printOptions) string {
 	// browser, in the reader's own regional format — the same rule the rest of
 	// the product follows. Formatting it here would have shipped one spelling to
 	// everybody, and it would have been ISO, which no reader writes by hand.
-	b.WriteString(`<script>` + paginateJS + "\n" +
+	nonce := ""
+	if o.Nonce != "" {
+		nonce = ` nonce="` + o.Nonce + `"`
+	}
+	b.WriteString(`<script` + nonce + `>` + paginateJS + "\n" +
 		`SALT_TITLE=` + jsString(title) + `;` +
 		`SALT_DAY=` + jsString(o.Date) + `;` +
 		`SALT_REGION=` + jsString(o.Region) + `;` +
 		`SALT_LANG=` + jsString(o.Language) + `;` +
-		`saltStart();</script>`)
+		`saltStart();` +
+		`document.querySelectorAll('[data-print]').forEach(function(b){b.addEventListener('click',function(){window.print()})});` +
+		`</script>`)
 	b.WriteString("</body></html>")
 	return b.String()
 }
@@ -598,7 +612,7 @@ func sidePanelHTML() string {
 		box("opt-comments", "Comments") +
 		box("opt-links", "Links as links") +
 		box("opt-landscape", "Landscape") +
-		`<button class="go" onclick="window.print()">Print / Save as PDF</button>` +
+		`<button class="go" data-print>Print / Save as PDF</button>` +
 		`<p class="note">What you see is what comes out. Nothing is sent anywhere.</p></aside>`
 }
 
@@ -960,4 +974,18 @@ func diagramStyle(svg string) string {
 		return ""
 	}
 	return ` style="width:min(100%, ` + m[1] + `px);aspect-ratio:` + m[1] + ` / ` + m[2] + `"`
+}
+
+// docCSP lets the print view and the shared page run their own script and
+// nothing else. The document is rendered from content anybody with write
+// access typed, and twice now a way through has turned up in that rendering: a
+// diagram's stored SVG with an event handler (1.1.1), and an inline link
+// written out as javascript:… (1.1.2). Each was fixed where it happened; this
+// makes the next one inert, whatever form it takes. Scripts need the nonce,
+// which inline handlers and javascript: addresses can never carry.
+func docCSP(w http.ResponseWriter, o *printOptions) {
+	b := make([]byte, 16)
+	rand.Read(b)
+	o.Nonce = base64.RawURLEncoding.EncodeToString(b)
+	w.Header().Set("Content-Security-Policy", "script-src 'nonce-"+o.Nonce+"'; object-src 'none'; base-uri 'none'")
 }

@@ -1,6 +1,7 @@
 package server
 
 import (
+	"bytes"
 	"crypto/hmac"
 	"crypto/sha256"
 	"encoding/hex"
@@ -75,6 +76,18 @@ func publicPageFiles(p *page) map[string]bool {
 	walk(content)
 	return out
 }
+// Reject absent names cheaply before parsing large block JSON. Escaped JSON
+// needs the authoritative parser: the stored spelling may differ from name.
+func publicPageReferencesFile(p *page, name string) bool {
+	if storedPublicFile(p.Icon) == name || storedPublicFile(p.Cover) == name {
+		return true
+	}
+	if !bytes.Contains(p.Content, []byte(name)) && !bytes.ContainsAny(p.Content, "\\%") {
+		return false
+	}
+	return publicPageFiles(p)[name]
+}
+
 func publicAssetURL(token, name string) string {
 	return "/public/" + url.PathEscape(token) + "/files/" + url.PathEscape(name)
 }
@@ -174,7 +187,7 @@ func (s *Server) handlePublicFile(w http.ResponseWriter, r *http.Request) {
 	w.Header().Set("Cache-Control", "private, no-store")
 	w.Header().Set("Referrer-Policy", "no-referrer")
 	w.Header().Set("X-Robots-Tag", "noindex, nofollow")
-	if r.Header.Get("X-Share-Password") != "" && !s.formRate.allow(s.clientIP(r)) {
+	if r.Header.Get("X-Share-Password") != "" && !s.sharePwRate.allow(sharePwKey(r.PathValue("token"), s.clientIP(r))) {
 		http.Error(w, "Try again later", 429)
 		return
 	}
@@ -185,7 +198,7 @@ func (s *Server) handlePublicFile(w http.ResponseWriter, r *http.Request) {
 		return
 	}
 	p, err := s.getPage(id)
-	if err != nil || p.Trashed || !publicPageFiles(p)[name] {
+	if err != nil || p.Trashed || !publicPageReferencesFile(p, name) {
 		http.NotFound(w, r)
 		return
 	}
