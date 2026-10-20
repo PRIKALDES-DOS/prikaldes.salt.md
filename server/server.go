@@ -28,6 +28,10 @@ type Server struct {
 	notices     string
 	addr        string
 	tunnel      tunnelState
+	// What the settings show about the cloudflared in use (tunnel_update.go).
+	cloudflared cloudflaredUpdates
+	// Agent keys from listed addresses only; see agent_addresses.go.
+	agentAddressList addressList
 	loginMu     sync.Mutex
 	loginSem    chan struct{}
 	events      *eventHub
@@ -38,6 +42,7 @@ type Server struct {
 	loginRate   *rateLimiter
 	tokenRate   *rateLimiter
 	formRate    *rateLimiter
+	sharePwRate *rateLimiter
 	stopCleanup chan struct{}
 	// webhookTransport overrides how webhook deliveries reach the network. Nil
 	// in every real build; set only by tests, whose receiver lives on an address
@@ -115,6 +120,9 @@ func New(dataDir string, dist fs.FS) (*Server, error) {
 		// Fed by REJECTED tokens only, so a working agent never touches it.
 		tokenRate:   newRateLimiter(60, 20),
 		formRate:    newRateLimiter(20, 8), // 20 public form submits/min per IP, burst 8
+		// Passwords on shared pages, per link and address. A share password was
+		// checked as fast as anybody could send guesses.
+		sharePwRate: newRateLimiter(10, 5),
 		stopCleanup: make(chan struct{}),
 	}
 	if err := s.seed(); err != nil {

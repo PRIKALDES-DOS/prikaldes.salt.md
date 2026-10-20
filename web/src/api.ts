@@ -18,6 +18,7 @@ import type {
 } from './types';
 import { t } from './i18n';
 import type { Prefs } from './i18n';
+import { normalizeCollectionConfig } from './types';
 import { formatBytes } from './format';
 import { serverMessage } from './serverErrors';
 
@@ -74,10 +75,24 @@ function throwApiError(url: string, err: ApiError): never {
   throw err;
 }
 
+/** The query an editor's autosave carries: the server holds it to the document
+ *  generation it descends from and answers 409 doc_replaced once that
+ *  document has been replaced from outside the editor. replaced: the editor
+ *  already knows, and sends its last copy only to have it kept in the page
+ *  history (server/docgen.go). */
+export function materializeQuery(opts?: { materialize?: boolean; gen?: number | null; replaced?: boolean }): string {
+  if (!opts?.materialize) return '';
+  if (opts.gen == null) return '?materialize=1';
+  return `?materialize=1&gen=${opts.gen}${opts.replaced ? '&replaced=1' : ''}`;
+}
+
 async function req<T>(url: string, init?: RequestInit): Promise<T> {
   const res = await fetch(url, {
     ...init,
-    headers: init?.body ? { 'Content-Type': 'application/json' } : undefined,
+    headers: {
+      ...(init?.body ? { 'Content-Type': 'application/json' } : {}),
+      ...((init?.headers as Record<string, string> | undefined) ?? {}),
+    },
   });
   if (!res.ok) throwApiError(url, await toApiError(res, ''));
   return res.json() as Promise<T>;
@@ -119,6 +134,9 @@ export const api = {
       publicBaseUrl: string;
       trustProxy: boolean;
       allowUserWorkspaces: boolean;
+      agentAddressesOn: boolean;
+      agentAddresses: string;
+      anthropicAddresses: string;
       maxUploadMb: number;
       trashDays: number;
       auditDays: number;
@@ -182,9 +200,18 @@ export const api = {
       httpsDomain: string;
       httpsEnabled: boolean;
       localUrl: string;
+      // The cloudflared in use and the newest release (server/tunnel_update.go).
+      cloudflaredVersion: string;
+      cloudflaredLatest: string;
+      cloudflaredBehind: boolean;
+      cloudflaredManaged: boolean;
+      cloudflaredCheckedAt: string;
+      cloudflaredCheckError: string;
+      cloudflaredUpdating: boolean;
+      cloudflaredAutoUpdate: boolean;
     }>('/api/admin/public-access'),
-  tunnelAction: (action: string, token?: string) =>
-    req<unknown>('/api/admin/tunnel', { method: 'POST', body: JSON.stringify({ action, token }) }),
+  tunnelAction: (action: string, token?: string, on?: boolean) =>
+    req<unknown>('/api/admin/tunnel', { method: 'POST', body: JSON.stringify({ action, token, on }) }),
   auditPrune: () =>
     req<{ removed: number; days: number }>('/api/admin/audit-prune', { method: 'POST' }),
   putSettings: (patch: Record<string, unknown>) =>
@@ -326,9 +353,10 @@ export const api = {
       // page at the top level there.
       workspaceId: string;
     }>,
-    opts?: { materialize?: boolean },
+    // gen: the document generation an autosave descends from (collab.ts).
+    opts?: { materialize?: boolean; gen?: number | null; replaced?: boolean },
   ) =>
-    req<Page>(`/api/pages/${id}${opts?.materialize ? '?materialize=1' : ''}`, {
+    req<Page>(`/api/pages/${id}${materializeQuery(opts)}`, {
       method: 'PATCH',
       body: JSON.stringify(patch),
     }),
@@ -370,7 +398,8 @@ export const api = {
   backlinks: (id: string) => req<Backlink[]>(`/api/pages/${id}/backlinks`),
   graph: () => req<{ edges: { source: string; target: string }[] }>('/api/graph'),
 
-  getCollection: (pageId: string) => req<CollectionConfig>(`/api/collections/${pageId}`),
+  getCollection: (pageId: string) =>
+    req<CollectionConfig>(`/api/collections/${pageId}`).then(normalizeCollectionConfig),
   // Who says they are working on what. Filtered per page on the server — the
   // live signal that triggers this carries no content for exactly that reason.
   presence: () =>
@@ -411,7 +440,8 @@ export const api = {
       limit: number;
     }>(`/api/collections/${pageId}/rows?${p.toString()}`);
   },
-  putCollection: (pageId: string, config: CollectionConfig) =>
+  // Either half alone is fine; the server keeps the other as stored.
+  putCollection: (pageId: string, config: Partial<CollectionConfig>) =>
     req<CollectionConfig>(`/api/collections/${pageId}`, {
       method: 'PUT',
       body: JSON.stringify(config),

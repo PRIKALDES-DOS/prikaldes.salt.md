@@ -264,7 +264,7 @@ page: yours and a colleague's are different lists over the same pages.
 ### Public share link
 
 A page published as a read-only link that works without an account. The globe in
-the page header mints it and shows it. Two things can be set on it: an **expiry**
+the page header opens its menu, where **Create link** mints it. Two things can be set on it: an **expiry**
 (*Never*, *In 1 day*, *In 7 days*, *In 30 days*) and an optional **password**.
 **Stop sharing** revokes it, and the link stops working at once.
 

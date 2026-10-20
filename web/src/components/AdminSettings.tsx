@@ -60,6 +60,8 @@ export function AdminSettingsModal({ onClose }: { onClose: () => void }) {
     pageNums: true, comments: false, links: true, landscape: false,
   });
   const [allowUserWs, setAllowUserWs] = useState(true);
+  // Agent keys from listed addresses only (server/agent_addresses.go).
+  const [agentAddr, setAgentAddr] = useState({ on: false, list: '', anthropic: '' });
   const [passSet, setPassSet] = useState(false);
   const [loaded, setLoaded] = useState(false);
   const [loadErr, setLoadErr] = useState<string | null>(null);
@@ -114,6 +116,7 @@ export function AdminSettingsModal({ onClose }: { onClose: () => void }) {
           comments: v.pdfComments, links: v.pdfLinks, landscape: v.pdfLandscape,
         });
         setAllowUserWs(v.allowUserWorkspaces !== false);
+        setAgentAddr({ on: v.agentAddressesOn, list: v.agentAddresses, anthropic: v.anthropicAddresses });
         setHttpsEnabled(v.httpsEnabled);
         setOauthSet({ google: v.googleSecretSet, ms: v.msSecretSet });
         setMail({ provider: v.mailProvider, address: v.mailAddress });
@@ -125,7 +128,8 @@ export function AdminSettingsModal({ onClose }: { onClose: () => void }) {
 
   // Instance info lazily when the maintenance tab opens.
   useEffect(() => {
-    if (tab === 'maintenance' && !info) void api.adminInfo().then(setInfo).catch(() => {});
+    // The access tab shows the admin's own address beside the agent list.
+    if ((tab === 'maintenance' || tab === 'access') && !info) void api.adminInfo().then(setInfo).catch(() => {});
     if (tab === 'webhooks' && hooks === null) void api.webhooks().then(setHooks).catch(() => setHooks([]));
   }, [tab, info, hooks]);
 
@@ -165,10 +169,10 @@ export function AdminSettingsModal({ onClose }: { onClose: () => void }) {
     }
   };
 
-  const tunnel = async (action: string, token?: string) => {
+  const tunnel = async (action: string, token?: string, on?: boolean) => {
     setTunnelBusy(true);
     try {
-      await api.tunnelAction(action, token);
+      await api.tunnelAction(action, token, on);
       setPa(await api.publicAccess());
       if (action === 'start-token') setTunnelToken('');
     } catch (e) {
@@ -225,6 +229,8 @@ export function AdminSettingsModal({ onClose }: { onClose: () => void }) {
         pdfLinks: pdf.links,
         pdfLandscape: pdf.landscape,
         allowUserWorkspaces: allowUserWs,
+        agentAddressesOn: agentAddr.on,
+        agentAddresses: agentAddr.list,
         maxUploadMb: num('maxUploadMb', 1, 2048),
         trashDays: num('trashDays', 0, 3650),
         auditDays: num('auditDays', 0, 3650),
@@ -433,6 +439,52 @@ ingress:
                       <label>{t('Client secret')}</label>
                       <input className="prop-input" type="password" placeholder={oauthSet.ms ? t('•••••• (stored)') : t('secret value')} value={s.msClientSecret} onChange={(e) => set('msClientSecret', e.target.value)} />
                     </div>
+
+                    <h3>{t('Agent keys')}</h3>
+                    <label className="check-label">
+                      <input
+                        type="checkbox"
+                        checked={agentAddr.on}
+                        onChange={(e) => setAgentAddr({ ...agentAddr, on: e.target.checked })}
+                      />
+                      {t('Accept agent keys only from these addresses')}
+                    </label>
+                    <p className="dialog-hint settings-hint">
+                      {t(
+                        'Covers every API token and every connected agent, over MCP and over the REST API. Signing in with a browser, the desktop app, public links, forms and calendar feeds are not affected. One address or network per line; # starts a comment.',
+                      )}
+                    </p>
+                    <textarea
+                      className="prop-input agent-addresses"
+                      rows={4}
+                      spellCheck={false}
+                      value={agentAddr.list}
+                      placeholder={agentAddr.anthropic}
+                      onChange={(e) => setAgentAddr({ ...agentAddr, list: e.target.value })}
+                    />
+                    <div className="agent-addresses-actions">
+                      <button
+                        className="btn-sm"
+                        disabled={agentAddr.list.includes(agentAddr.anthropic)}
+                        onClick={() => {
+                          const line = `${agentAddr.anthropic}  # Anthropic (Claude)`;
+                          const list = agentAddr.list.trimEnd();
+                          setAgentAddr({ ...agentAddr, list: list ? `${list}\n${line}` : line });
+                        }}
+                      >
+                        {t('Add Anthropic (Claude)')}
+                      </button>
+                      {info && (
+                        <span className="dialog-hint">
+                          {t('Your address, as the server sees it:')} <code>{info.yourIp}</code>
+                        </span>
+                      )}
+                    </div>
+                    <p className="dialog-hint settings-hint">
+                      {t(
+                        'Claude in the browser and in the desktop app calls from Anthropic’s addresses. Claude Code and other agents running on your own computer call from your address, so add that too if you use them.',
+                      )}
+                    </p>
                   </>
                 )}
 
@@ -588,6 +640,48 @@ ingress:
                         </button>
                       </div>
                     </div>
+
+                    {pa?.cloudflaredHere && (
+                      <div className="pa-card">
+                        <strong>{t('cloudflared')}</strong>
+                        <p className="dialog-hint settings-hint">
+                          {pa.cloudflaredVersion
+                            ? t('Version {version} in use.', { version: pa.cloudflaredVersion })
+                            : t('The version in use could not be read.')}{' '}
+                          {pa.cloudflaredBehind &&
+                            t('{latest} is available.', { latest: pa.cloudflaredLatest })}
+                          {!pa.cloudflaredBehind && pa.cloudflaredLatest && t('That is the newest release.')}
+                          {!pa.cloudflaredManaged &&
+                            ' ' +
+                              t(
+                                'This copy was installed on the system, not by salt.md, so it is updated by whatever installed it.',
+                              )}
+                        </p>
+                        {pa.cloudflaredCheckError && (
+                          <p className="dialog-hint settings-hint pa-warn">{pa.cloudflaredCheckError}</p>
+                        )}
+                        {pa.cloudflaredManaged && (
+                          <div className="settings-row">
+                            <label className="settings-check">
+                              <input
+                                type="checkbox"
+                                checked={pa.cloudflaredAutoUpdate}
+                                disabled={tunnelBusy}
+                                onChange={(e) => void tunnel('cloudflared-autoupdate', undefined, e.target.checked)}
+                              />
+                              <span>{t('Keep it up to date automatically (checked daily, checksum verified)')}</span>
+                            </label>
+                            <button
+                              className="btn-sm"
+                              disabled={tunnelBusy || pa.cloudflaredUpdating}
+                              onClick={() => void tunnel('update-cloudflared')}
+                            >
+                              {tunnelBusy ? t('Please wait…') : t('Check now')}
+                            </button>
+                          </div>
+                        )}
+                      </div>
+                    )}
 
                     <div className="pa-card">
                       <strong>{t('3 · Straight to HTTPS (no Cloudflare, e.g. a VPS)')}</strong>

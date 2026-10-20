@@ -79,6 +79,9 @@ export interface AuditEntry {
 export interface Page extends PageMeta {
   content: unknown[];
   createdAt: string;
+  /** The generation of this body (server/docgen.go); absent from a server
+   *  that predates it. */
+  docGen?: number;
 }
 
 export interface SearchResult {
@@ -266,6 +269,20 @@ export interface Filter {
 export interface Sort {
   property: string;
   dir: 'asc' | 'desc';
+}
+
+/** Every condition a view reads carries a `value`, even the ones whose question
+ *  is asked through `values` (a set) or through nothing at all (is_empty). A
+ *  filter without one is older than that convention or came from a client that
+ *  did not know. The row matcher lowercases `value` for `contains` — which is
+ *  where a missing one took a whole view down with "Cannot read properties of
+ *  undefined" — so it is filled in once, here, before any view reads it. */
+export function normalizeCollectionConfig(cfg: CollectionConfig): CollectionConfig {
+  const withValue = (f: Filter): Filter => ((f as Filter | undefined)?.value === undefined ? { ...f, value: '' } : f);
+  for (const view of cfg.views ?? []) {
+    if (view.filters) view.filters = view.filters.map(withValue);
+  }
+  return cfg;
 }
 
 export interface ViewDef {

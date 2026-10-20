@@ -456,9 +456,10 @@ looking at, so what you print is the table, board or calendar as arranged.
 
 The **lock** toggles a page between *Visible to the workspace* and
 *Private (only you)*, and the setting is inherited by everything under it. The
-**globe** mints a read-only link anyone can open without signing in, with an
-optional expiry (*Never*, *In 1 day*, *In 7 days*, *In 30 days*) and an optional
-password, and **Stop sharing** revokes it. Both are covered properly in
+**globe** opens the menu where **Create link** mints a read-only link anyone can
+open without signing in, with an optional expiry (*Never*, *In 1 day*,
+*In 7 days*, *In 30 days*) and an optional password, and **Stop sharing**
+revokes it. Both are covered properly in
 [Permissions](permissions.md) and [Sharing](sharing.md).
 
 ## Saving, and what else lives on a page
@@ -502,8 +503,9 @@ correct where they stand.
 | `get_permissions` | can_read / can_write / can_delete, before attempting a write |
 
 Two honest limits. `write_content` with `mode: "replace"` goes around the live
-editor, so anyone with the page open at that moment loses their unsaved edits;
-appending cannot do that, which is why it is the default. And an agent that has
+editor, so anyone with the page open at that moment loses their unsaved edits
+from the page (they are kept in its version history); appending cannot do that,
+which is why it is the default. And an agent that has
 been connected since before a release keeps the tool list it fetched then; a
 renamed tool only appears after it reconnects.
 

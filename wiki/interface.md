@@ -82,7 +82,7 @@ workspace name rather than clicking Yes. See [Workspaces](workspaces.md) and
 Two round buttons top right:
 
 - **Library (every page)** opens the full-screen library over the page. It has
-  its own tab strip (**Recently used**, **Favorites**, **Shared**, **Private**,
+  its own tab strip (**Recently used**, **Favorites**, **Workspace**, **Private**,
   **All pages**, **Graph** and **Tree · agent view**), with a workspace picker, a
   filter box and a sort menu. See [Library](library.md).
 - **Collapse the sidebar** slides it away. On a desktop it does not disappear:
@@ -347,10 +347,11 @@ browser, across pages.
 
 ### Sharing to the web
 
-The globe opens a small menu: the read-only link in a field that selects itself
-when you click it, **Expires:** with **Never**, **In 1 day**, **In 7 days** or
-**In 30 days**, an optional **Password (optional)** field, and two buttons,
-**Copy** and **Stop sharing**. See [Sharing](sharing.md).
+The globe opens a small menu and publishes nothing by itself: **Expires:** with
+**Never**, **In 1 day**, **In 7 days** or **In 30 days**, an optional
+**Password (optional)** field, and **Create link**. Once the link exists the
+menu shows it in a field that selects itself when you click it, with **Copy**
+and **Stop sharing**. See [Sharing](sharing.md).
 
 ### The ⋯ menu
 

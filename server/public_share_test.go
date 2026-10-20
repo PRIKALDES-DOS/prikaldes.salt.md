@@ -204,3 +204,22 @@ func TestPublicCollectionDoesNotExposePrivateChildren(t *testing.T) {
 		}
 	}
 }
+
+// The fast rejection must not grant text-only mentions or change JSON's
+// last-key-wins semantics, and encoded upload URLs must still work.
+func TestPublicAssetFastPathPreservesReferenceAuthority(t *testing.T) {
+	for _, tc := range []struct { name, content string; want bool }{
+		{"plain", `[{"props":{"url":"/files/a.png"}}]`, true},
+		{"absent", `[{"props":{"url":"/files/b.png"}}]`, false},
+		{"text", `[{"content":[{"text":"/files/a.png"}]}]`, false},
+		{"duplicate", `[{"props":{"url":"/files/a.png","url":"/files/b.png"}}]`, false},
+		{"escaped", `[{"props":{"url":"\/files\/a.png"}}]`, true},
+		{"unicode", `[{"props":{"url":"/files/\u0061.png"}}]`, true},
+		{"encoded", `[{"props":{"url":"/files/%61.png"}}]`, true},
+	} {
+		t.Run(tc.name, func(t *testing.T) {
+			p := &page{Content: json.RawMessage(tc.content)}
+			if got := publicPageReferencesFile(p, "a.png"); got != tc.want { t.Fatalf("got %v, want %v", got, tc.want) }
+		})
+	}
+}
