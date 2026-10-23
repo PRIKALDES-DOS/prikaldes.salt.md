@@ -243,9 +243,10 @@ the client is stale.
 
 ## Share links that do not work
 
-### "This link is invalid or has expired"
+### "Link unavailable"
 
-A visitor gets a plain page with that sentence. Three things produce it:
+A visitor gets a plain page with that heading and the sentence *This link may
+have been disabled or expired.* Three things produce it:
 
 - the link was revoked with **Stop sharing**;
 - its expiry passed: an expired link is deleted the first time it is opened;
@@ -253,10 +254,10 @@ A visitor gets a plain page with that sentence. Three things produce it:
   Changing the expiry or setting a password mints a new token and kills the old
   one, so a link already sent out stops working.
 
-A page that has been moved to the trash or deleted gives a shorter page: just
-*Not found*, with no sentence about the link. The link itself is still live, so
-restoring the page brings it back. See
-[Trash and recovery](trash-and-recovery.md).
+A page that has been moved to the trash gives the same heading without the
+sentence. The link itself is still live, so restoring the page brings it back.
+Once the page is deleted for good, its link goes with it and answers like a
+revoked one. See [Trash and recovery](trash-and-recovery.md).
 
 ### The link points at an address nobody outside can open
 

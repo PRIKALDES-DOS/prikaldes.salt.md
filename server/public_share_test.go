@@ -213,7 +213,10 @@ func TestPublicCollectionDoesNotExposePrivateChildren(t *testing.T) {
 // The fast rejection must not grant text-only mentions or change JSON's
 // last-key-wins semantics, and encoded upload URLs must still work.
 func TestPublicAssetFastPathPreservesReferenceAuthority(t *testing.T) {
-	for _, tc := range []struct { name, content string; want bool }{
+	for _, tc := range []struct {
+		name, content string
+		want          bool
+	}{
 		{"plain", `[{"props":{"url":"/files/a.png"}}]`, true},
 		{"absent", `[{"props":{"url":"/files/b.png"}}]`, false},
 		{"text", `[{"content":[{"text":"/files/a.png"}]}]`, false},
@@ -224,7 +227,9 @@ func TestPublicAssetFastPathPreservesReferenceAuthority(t *testing.T) {
 	} {
 		t.Run(tc.name, func(t *testing.T) {
 			p := &page{Content: json.RawMessage(tc.content)}
-			if got := publicPageReferencesFile(p, "a.png"); got != tc.want { t.Fatalf("got %v, want %v", got, tc.want) }
+			if got := publicPageReferencesFile(p, "a.png"); got != tc.want {
+				t.Fatalf("got %v, want %v", got, tc.want)
+			}
 		})
 	}
 }
@@ -238,14 +243,24 @@ func TestPublicAssetsSharePasswordBudgetWithHTMLAndJSON(t *testing.T) {
 		r.Header.Set("X-Share-Password", password)
 		w := httptest.NewRecorder()
 		s.ServeHTTP(w, r)
-		if w.Header().Get("Cache-Control") != "private, no-store" { t.Fatal("public response is cacheable") }
+		if w.Header().Get("Cache-Control") != "private, no-store" {
+			t.Fatal("public response is cacheable")
+		}
 		return w.Code
 	}
 	asset := "/public/" + token + "/files/shared.png"
-	for i := 0; i < 8; i++ { request(asset, "wrong", "203.0.113.5") }
-	if request(asset, "correct", "203.0.113.5") != 429 || request("/api/public/"+token, "correct", "203.0.113.5") != 429 { t.Fatal("asset guesses bypass the shared password budget") }
-	if request(asset, "correct", "198.51.100.2") != 200 { t.Fatal("another visitor was locked out") }
+	for i := 0; i < 8; i++ {
+		request(asset, "wrong", "203.0.113.5")
+	}
+	if request(asset, "correct", "203.0.113.5") != 429 || request("/api/public/"+token, "correct", "203.0.113.5") != 429 {
+		t.Fatal("asset guesses bypass the shared password budget")
+	}
+	if request(asset, "correct", "198.51.100.2") != 200 {
+		t.Fatal("another visitor was locked out")
+	}
 	other := strings.Repeat("c", 36)
 	s.db.Exec(`INSERT INTO share_links(token_hash,page_id,created_at,password_hash) VALUES(?,'shared-page',?,?)`, tokenHash(other), now(), tokenHash(other+":correct"))
-	if request("/public/"+other+"/files/shared.png", "correct", "203.0.113.5") != 200 { t.Fatal("another link was locked out") }
+	if request("/public/"+other+"/files/shared.png", "correct", "203.0.113.5") != 200 {
+		t.Fatal("another link was locked out")
+	}
 }

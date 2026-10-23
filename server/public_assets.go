@@ -76,6 +76,7 @@ func publicPageFiles(p *page) map[string]bool {
 	walk(content)
 	return out
 }
+
 // Reject absent names cheaply before parsing large block JSON. Escaped JSON
 // needs the authoritative parser: the stored spelling may differ from name.
 func publicPageReferencesFile(p *page, name string) bool {

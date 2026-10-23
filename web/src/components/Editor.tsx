@@ -726,7 +726,6 @@ function PageHeader({
       // Absolute URL on the external domain when configured; else current origin.
       setShareCopied(false);
       setShareUrl(res.url.startsWith('http') ? res.url : location.origin + res.url);
-      setShareCopied(false);
       setMadeWith({ days: shareExpiry, password: sharePassword });
       setShareOff(false);
       onPagesChanged();

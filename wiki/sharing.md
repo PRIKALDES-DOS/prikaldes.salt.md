@@ -166,10 +166,11 @@ password is sent in the form body, so it never appears in the address bar or in
 a browser history entry.
 
 Guessing is limited per link and per address: after five attempts in quick
-succession the form answers **Too many attempts. Wait a minute and try again.**,
-and after that ten attempts a minute get through. The limit is checked before
-the password is, so the right one waits too. Somebody else opening the same link
-from another address is not affected.
+succession the page answers **Too many attempts. Please wait a minute.**, and
+after that ten attempts a minute get through. The form, the page's files and
+the JSON route share that one budget. The limit is checked before the password
+is, so the right one waits too. Somebody else opening the same link from
+another address is not affected.
 
 Three properties of this that surprise people:
 

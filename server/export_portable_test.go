@@ -97,6 +97,10 @@ func TestPortableExportUsesConfiguredPublicBase(t *testing.T) {
 	s.setSetting("public_base_url", "https://public.example.test/docs")
 	p := &page{Content: json.RawMessage(`[{"type":"image","props":{"url":"/files/missing.png"}},{"type":"paragraph","content":[{"type":"pageLink","props":{"pageId":"other","label":"Open"}}]}]`)}
 	got, err := s.portableExportHTML(p, httptest.NewRequest("GET", "http://internal.invalid/export", nil))
-	if err != nil { t.Fatal(err) }
-	if strings.Contains(got, "internal.invalid") || !strings.Contains(got, "https://public.example.test/files/missing.png") || !strings.Contains(got, "https://public.example.test/p/other") { t.Fatal("export ignored configured public origin") }
+	if err != nil {
+		t.Fatal(err)
+	}
+	if strings.Contains(got, "internal.invalid") || !strings.Contains(got, "https://public.example.test/files/missing.png") || !strings.Contains(got, "https://public.example.test/p/other") {
+		t.Fatal("export ignored configured public origin")
+	}
 }

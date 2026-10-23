@@ -54,7 +54,7 @@ func TestPublicCollectionTableEmptyAndCellValues(t *testing.T) {
 	options := map[string]string{"status/a": "Alpha", "status/b": "Beta"}
 	for _, pair := range []struct {
 		value any
-		kind string
+		kind  string
 		want  string
 	}{{[]any{"a", "b"}, "multiselect", "Alpha, Beta"}, {false, "checkbox", ""}, {true, "checkbox", "✓"}, {float64(3.25), "number", "3.25"}, {float64(3), "number", "3"}, {nil, "text", ""}} {
 		if got := publicCollectionTypedCell(pair.value, pair.kind, "status", options); got != pair.want {

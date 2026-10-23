@@ -263,7 +263,7 @@ a new account starts on automatic.
   no account yet, so the server has no way of knowing what language they read.
   See [Mail](mail.md).
 - **A page you share publicly is English for everyone.** The password prompt, the
-  "Not found" page for a dead link and the print bar of an exported page are
+  "Link unavailable" page for a dead link and the print bar of an exported page are
   built by the server as plain HTML with no translation layer, and they do not
   know who is reading. A shared collection prints its values raw as well:
   `2026-07-18`, and numbers with a dot. See [Sharing](sharing.md).

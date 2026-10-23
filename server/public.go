@@ -24,11 +24,19 @@ func (s *Server) handlePublicView(w http.ResponseWriter, r *http.Request) {
 	docCSP(w, &opts)
 	nonce := opts.Nonce
 	w.Header().Set("Content-Type", "text/html; charset=utf-8")
+	// Stop sharing has to end the page everywhere at once. Without a word on
+	// caching, a proxy or the tunnel's edge may keep a copy of a page whose link
+	// was revoked, which is exactly the report in #68.
 	w.Header().Set("Cache-Control", "private, no-store")
 	w.Header().Set("Referrer-Policy", "no-referrer")
 	w.Header().Set("X-Robots-Tag", "noindex, nofollow")
 	w.Header().Set("X-Content-Type-Options", "nosniff")
-	w.Header().Set("Content-Security-Policy", w.Header().Get("Content-Security-Policy")+"; default-src 'none'; style-src 'self' 'unsafe-inline'; font-src 'self'; img-src 'self' https: data:; media-src 'self' https:; connect-src 'none'; frame-ancestors 'none'; form-action 'self'")
+	// Fonts from data: too: the build inlines small files as data: URIs, one
+	// font of the app stylesheet among them, and without it every public page
+	// logged a policy error and monospace text lost its extended Cyrillic.
+	w.Header().Set("Content-Security-Policy", w.Header().Get("Content-Security-Policy")+"; default-src 'none'; style-src 'self' 'unsafe-inline'; font-src 'self' data:; img-src 'self' https: data:; media-src 'self' https:; connect-src 'none'; frame-ancestors 'none'; form-action 'self'")
+	// Before the comparison, so a guess past the limit costs nothing and tells
+	// nothing, the right password included.
 	if password != "" && !s.sharePwRate.allow(sharePwKey(token, s.clientIP(r))) {
 		w.WriteHeader(429)
 		w.Write([]byte(s.publicDocument("Try again later", `<h1 class="page-title">Try again later</h1><p>Too many attempts. Please wait a minute.</p>`, nonce)))
@@ -96,7 +104,7 @@ func (s *Server) publicDocument(title, body, nonce string) string {
 }
 
 const publicThemeSwitch = `<div class="theme-switch" role="radiogroup" aria-label="Appearance"><button type="button" role="radio" aria-checked="false" aria-label="Light theme" title="Light theme" class="theme-switch-opt" data-public-theme="light" tabindex="-1"><svg width="15" height="15" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2" stroke-linecap="round"><circle cx="12" cy="12" r="4"/><path d="M12 2v2m0 16v2M2 12h2m16 0h2M5 5l1.5 1.5m11 11L19 19M5 19l1.5-1.5m11-11L19 5"/></svg></button><button type="button" role="radio" aria-checked="true" aria-label="Automatic: use system theme" title="Automatic: use system theme" class="theme-switch-opt on" data-public-theme="auto" tabindex="0"><svg width="15" height="15" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2"><rect x="3" y="4" width="18" height="13" rx="2"/><path d="M12 17v4m-4 0h8"/></svg></button><button type="button" role="radio" aria-checked="false" aria-label="Dark theme" title="Dark theme" class="theme-switch-opt" data-public-theme="dark" tabindex="-1"><svg width="15" height="15" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2" stroke-linecap="round" stroke-linejoin="round"><path d="M20.9 13a9 9 0 0 1-9.9-9.9A9 9 0 1 0 20.9 13Z"/></svg></button></div>`
-const publicThemeBoot = `(()=>{let pref='auto',font='brand';try{const v=localStorage.getItem('salt-theme');if(['light','dark','auto'].includes(v))pref=v;if(localStorage.getItem('salt-font')==='system')font='system';}catch{}const mq=matchMedia('(prefers-color-scheme: dark)');function apply(){document.documentElement.dataset.theme=pref==='auto'?(mq.matches?'dark':'light'):pref;document.documentElement.dataset.font=font;document.querySelectorAll('[data-public-theme]').forEach(b=>{const on=b.dataset.publicTheme===pref;b.classList.toggle('on',on);b.setAttribute('aria-checked',String(on));b.tabIndex=on?0:-1;});}window.saltPublicTheme={apply,set(v){if(!['light','auto','dark'].includes(v))return;pref=v;try{localStorage.setItem('salt-theme',v);}catch{}apply();}};mq.addEventListener('change',apply);addEventListener('storage',e=>{if(e.key==='salt-theme'){pref=['light','dark','auto'].includes(e.newValue)?e.newValue:'auto';apply();}});apply();})();`
+const publicThemeBoot = `(()=>{let pref='auto',font='brand';try{const v=localStorage.getItem('salt-theme');if(['light','dark','auto'].includes(v))pref=v;if(localStorage.getItem('salt-font')==='system')font='system';}catch{}const mq=matchMedia('(prefers-color-scheme: dark)');function apply(){document.documentElement.dataset.theme=pref==='auto'?(mq.matches?'dark':'light'):pref;document.documentElement.dataset.font=font;document.querySelectorAll('[data-public-theme]').forEach(b=>{const on=b.dataset.publicTheme===pref;b.classList.toggle('on',on);b.setAttribute('aria-checked',String(on));b.tabIndex=on?0:-1;});}window.saltPublicTheme={apply,set(v){if(!['light','auto','dark'].includes(v))return;pref=v;try{localStorage.setItem('salt-theme',v);}catch{}apply();}};mq.addEventListener('change',apply);addEventListener('storage',e=>{if(e.key==='salt-theme'){pref=['light','dark','auto'].includes(e.newValue)?e.newValue:'auto';apply();}});addEventListener('beforeprint',()=>{document.documentElement.dataset.theme='light';});addEventListener('afterprint',apply);apply();})();`
 const publicThemeControls = `(()=>{const buttons=[...document.querySelectorAll('[data-public-theme]')];buttons.forEach((b,i)=>{b.addEventListener('click',()=>saltPublicTheme.set(b.dataset.publicTheme));b.addEventListener('keydown',e=>{let n=i;if(['ArrowRight','ArrowDown'].includes(e.key))n=(i+1)%buttons.length;else if(['ArrowLeft','ArrowUp'].includes(e.key))n=(i+buttons.length-1)%buttons.length;else if(e.key==='Home')n=0;else if(e.key==='End')n=buttons.length-1;else return;e.preventDefault();buttons[n].focus();saltPublicTheme.set(buttons[n].dataset.publicTheme);});});saltPublicTheme.apply();})();`
 
 // Layout only: all colours, fonts and controls inherit the native app stylesheet.
