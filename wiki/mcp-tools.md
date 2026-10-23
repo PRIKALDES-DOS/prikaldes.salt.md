@@ -833,12 +833,12 @@ A board needs `group_by`, a calendar and a timeline need `date_prop`, and both
 are checked up front: a board without a grouping renders empty and sends you
 hunting for the mistake in the data rather than in the call.
 
-What is checked is that the property **exists in the schema**, not what type it
-is. A board grouped by a date or a checkbox is created without complaint, and
-then shows "This board needs a Select property to group by. Open ⚙ Properties to
-add one." instead of columns. The types that produce columns are select,
-multi-select and relation; those are also the only ones the interface's own
-group-by picker offers.
+A board's grouping is checked for **type** as well: it has to be a select, a
+multi-select or a relation, the same three the interface's own group-by picker
+offers, and a row with several tags appears under each of them. Anything else is
+refused, because a board grouped by a date or a text column would otherwise show
+one catch-all column with every row in it. A board whose grouping property has
+been deleted since is refused on every change until `group_by` names a real one.
 
 Clearing works through empty values: `""` for `sort`, `[]` for `filters` and
 `hidden`. **`group_by` and `date_prop` cannot be cleared on the view types that
@@ -857,8 +857,11 @@ Returns `Created <type> view "Name" (id …)` or `Updated view "Name" (id …)`.
 Errors: `unknown view type "x" — use table, board, gallery, calendar, timeline,
 list or form`; `a view's type cannot be changed — delete it and create the new
 one`; `a board needs group_by (the property to make columns from)`;
-`a calendar needs date_prop (a date property id)`; `"x" is not a property of
-this database`; `filter N: unknown op "x" — use is, is_not, contains, gt, lt,
+`a calendar needs date_prop (a date property id)`; `board group_by: "x" is a
+text property. A board groups by a select, a multiselect or a relation`;
+`board group_by: "x" is no longer a property of this database. Pass group_by with
+a select, a multiselect or a relation property`; `"x" is not a property of this
+database`; `filter N: unknown op "x". Use is, is_not, contains, gt, lt, between,
 is_empty or is_not_empty`; `view "…" not found — call get_collection for the
 ids`.
 

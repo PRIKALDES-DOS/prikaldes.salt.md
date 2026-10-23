@@ -34,12 +34,11 @@ A collection that has just been created carries two views: **Board**, grouped by
 the Status property, and **Table**, in that order, so the board is what opens
 first.
 
-A database created by an agent gets those same two views, whatever schema the
-agent supplied, including a Board grouped by a property with the id `status`.
-If the schema has no such property the database opens on *This board needs a
-Select property to group by. Open ⚙ Properties to add one.* Point the board at a
-real property with the **Group** button, or with `set_view` and `group_by`, or
-remove the board and keep the table.
+A database created by an agent gets the same two views, with the board pointed
+at the schema the agent supplied: grouped by `status` if that is a select, a
+multi-select or a relation, otherwise by the first property of those kinds. A
+schema with none of them gets only the table. Point the board at another
+property with the **Group** button, or with `set_view` and `group_by`.
 
 ### `table`
 

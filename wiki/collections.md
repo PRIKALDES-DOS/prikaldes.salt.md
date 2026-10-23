@@ -70,11 +70,12 @@ Options may be plain strings as above, or objects with a colour
 
 Two things about that call are easy to get wrong:
 
-- **The two views are always the same two, whatever schema you pass**, and the
-  board still groups by the property id `status`. Give your schema a select
-  property that slugs to `status`, or repoint the board with `set_view`
-  afterwards; otherwise the new database opens on a board saying
-  *This board needs a Select property to group by.* with no rows on it.
+- **The board follows the schema you pass.** A new database gets a Board and a
+  Table. The board groups by `status` when your schema has a select, a
+  multi-select or a relation with that id, otherwise by the first property of
+  those three kinds; with none of them, the database gets only the table.
+  Repoint the board with `set_view` and `group_by` if the first one is not the
+  one you meant.
 - **Without a `parent_id`, pass `workspace_id`.** With neither, the database is
   created in your first workspace and nothing on screen says which one that was.
   Call `list` with `kind: "workspaces"` first.

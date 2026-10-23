@@ -181,6 +181,8 @@ func TestViewConfigurationIsValidated(t *testing.T) {
 		{"unknown hidden property", viewSpec{Name: "D", Type: "table", Hidden: &[]string{"ghost"}}, "ghost"},
 		{"board without grouping", viewSpec{Name: "E", Type: "board"}, "group_by"},
 		{"grouping that does not exist", viewSpec{Name: "F", Type: "board", GroupBy: ptr("ghost")}, "ghost"},
+		{"grouping by text", viewSpec{Name: "G", Type: "board", GroupBy: ptr("system")}, "is a text property"},
+		{"grouping by a date", viewSpec{Name: "H", Type: "board", GroupBy: ptr("due")}, "is a date property"},
 	} {
 		_, err := s.mcpCreateView(tasks, c.spec)
 		if err == nil {
@@ -265,3 +267,37 @@ func TestUpdateViewRefusesAReadOnlyToken(t *testing.T) {
 }
 
 func ptr[T any](v T) *T { return &v }
+
+// A board whose grouping property was deleted afterwards: every change to it
+// is refused until it groups by something real, and the message says so
+// instead of `"status" is a  property`.
+func TestBoardOnADeletedPropertySaysWhatToPass(t *testing.T) {
+	s := testServer(t)
+	uid, _ := signedIn(t, s, "gone@example.test")
+	ws := s.firstWorkspaceOf(t, uid)
+	tasks := tasksCollection(t, s, ws, uid)
+	out, err := s.mcpCreateView(tasks, viewSpec{Name: "Board", Type: "board", GroupBy: ptr("status")})
+	if err != nil {
+		t.Fatalf("create: %v", err)
+	}
+	viewID := out[strings.Index(out, "(id ")+4 : strings.LastIndex(out, ")")]
+	schema, views, err := s.loadCollection(tasks)
+	if err != nil {
+		t.Fatal(err)
+	}
+	kept := []map[string]any{}
+	for _, p := range schema {
+		if p["id"] != "status" {
+			kept = append(kept, p)
+		}
+	}
+	sb, _ := json.Marshal(kept)
+	vb, _ := json.Marshal(views)
+	if _, err := s.db.Exec(`UPDATE collections SET schema = ?, views = ? WHERE page_id = ?`, string(sb), string(vb), tasks); err != nil {
+		t.Fatal(err)
+	}
+	_, err = s.mcpUpdateView(tasks, viewID, viewSpec{Name: "Renamed"})
+	if err == nil || !strings.Contains(err.Error(), "no longer a property") {
+		t.Fatalf("update on a board grouped by a deleted property: %v", err)
+	}
+}

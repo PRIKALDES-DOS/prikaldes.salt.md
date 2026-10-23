@@ -513,8 +513,13 @@ func applyViewSpec(view map[string]any, spec viewSpec, schema []map[string]any) 
 		// three.
 		switch t := typeOf(g); t {
 		case "select", "multiselect", "relation":
+		case "":
+			// The view still names a property that was deleted since. Any
+			// change to such a board lands here, so the message says what to
+			// pass rather than only what is wrong.
+			return fmt.Errorf("board group_by: %q is no longer a property of this database. Pass group_by with a select, a multiselect or a relation property", g)
 		default:
-			return fmt.Errorf("board group_by: %q is a %s property — a board groups by a select, a multiselect or a relation", g, t)
+			return fmt.Errorf("board group_by: %q is a %s property. A board groups by a select, a multiselect or a relation", g, t)
 		}
 	}
 	if viewType == "calendar" || viewType == "timeline" {
