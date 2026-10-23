@@ -2210,8 +2210,8 @@ body:has(.icon-picker) .bn-side-menu {
   transform: rotate(2deg);
 }
 
-/* Karten laden zum Ziehen ein. */
-.board-card { touch-action: pan-y; } /* vertikal scrollen bleibt, horizontal = ziehen */
+/* Cards invite dragging: vertical swipes still scroll, horizontal ones drag. */
+.board-card { touch-action: pan-y; }
 
 .board-col-head {
   display: flex;
