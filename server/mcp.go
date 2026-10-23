@@ -1004,7 +1004,7 @@ func (s *Server) mcpCall(u *user, name string, rawArgs json.RawMessage, publicBa
 			// Without resolving the comment to its page, a guessed id would write
 			// into somebody else's workspace.
 			pid, ok := s.commentPage(args.CommentID)
-			if !ok || !s.canWrite(userID, pid) {
+			if !ok || !s.canWrite(userID, pid) || !s.credentialMayEnter(u, s.pageWorkspace(pid)) {
 				return "", fmt.Errorf("comment %q not found", args.CommentID)
 			}
 			return s.mcpDeleteComment(args.CommentID)
@@ -1164,7 +1164,7 @@ func (s *Server) mcpCall(u *user, name string, rawArgs json.RawMessage, publicBa
 			// One row or many. With updates the central page check does not bite,
 			// so the permissions of EVERY row are checked inside the function.
 			if len(args.Updates) > 0 {
-				return s.mcpBatchSetProperties(userID, args.Updates)
+				return s.mcpBatchSetProperties(u, args.Updates)
 			}
 			return s.mcpSetProperties(args.PageID, args.Properties, u)
 		case "create_database":

@@ -700,7 +700,7 @@ func (s *Server) mcpCreateRows(userID, pageID string, rows json.RawMessage) (str
 }
 
 // mcpBatchSetProperties updates many rows in one call.
-func (s *Server) mcpBatchSetProperties(userID string, updates json.RawMessage) (string, error) {
+func (s *Server) mcpBatchSetProperties(caller *user, updates json.RawMessage) (string, error) {
 	var list []struct {
 		PageID     string          `json:"page_id"`
 		Properties json.RawMessage `json:"properties"`
@@ -714,16 +714,22 @@ func (s *Server) mcpBatchSetProperties(userID string, updates json.RawMessage) (
 	if len(list) > 200 {
 		return "", fmt.Errorf("at most 200 updates per call (got %d)", len(list))
 	}
-	// Check the permissions for ALL of them BEFORE the first change — otherwise
-	// the call breaks off halfway and leaves a half-updated database.
+	// Check the permissions for ALL of them BEFORE the first change, or the
+	// call breaks off halfway and leaves a half-updated database. Every row
+	// passes both gates a single set_properties passes in mcpCall: the
+	// person's right to write, and the credential's. Without the second, a
+	// token narrowed to one workspace wrote rows in the others, and an agent
+	// wrote into a workspace closed to agents, as long as it used this form.
 	for _, u := range list {
-		if !s.canWrite(userID, u.PageID) {
+		if !s.canWrite(caller.ID, u.PageID) || !s.credentialMayEnter(caller, s.pageWorkspace(u.PageID)) {
 			return "", fmt.Errorf("page %q not found (nothing was changed)", u.PageID)
 		}
 	}
 	done := 0
 	for _, u := range list {
-		if _, err := s.mcpSetProperties(u.PageID, u.Properties, nil); err != nil {
+		// With the caller, so each change lands in the activity log and can be
+		// taken back like a single one.
+		if _, err := s.mcpSetProperties(u.PageID, u.Properties, caller); err != nil {
 			return "", fmt.Errorf("updated %d row(s), then failed on %q: %w", done, u.PageID, err)
 		}
 		done++

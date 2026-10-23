@@ -150,3 +150,58 @@ func TestAViewerCreatesNothingWhereTheyMayOnlyRead(t *testing.T) {
 		t.Errorf("%d pages owned by the viewer exist", n)
 	}
 }
+
+// The two agent tools that do not name the page they change: set_properties
+// with a list of updates, and delete_comment. Both checked the person's right
+// to write and not the credential, so a token narrowed to one workspace, or
+// any token in a workspace closed to agents, changed what it may not enter.
+func TestToolsThatNameNoPageStillCheckTheCredential(t *testing.T) {
+	f := newScopeFixture(t)
+	col := f.s.makeCollection(t, f.other, f.owner, "Ledger", `[{"id":"note","name":"Note","type":"text"}]`)
+	row := f.s.makeRow(t, f.other, f.owner, col, "Entry", `{"note":"before"}`)
+	comment := newID()
+	if _, err := f.s.db.Exec(`INSERT INTO comments (id, page_id, block_id, author_id, author_name, body, created_at)
+		VALUES (?, ?, '', ?, 'Owner', 'keep me', ?)`, comment, row, f.owner, now()); err != nil {
+		t.Fatalf("comment: %v", err)
+	}
+	note := func() string {
+		var props string
+		f.s.db.QueryRow(`SELECT props FROM pages WHERE id = ?`, row).Scan(&props)
+		return props
+	}
+	comments := func() int {
+		var n int
+		f.s.db.QueryRow(`SELECT COUNT(*) FROM comments WHERE id = ?`, comment).Scan(&n)
+		return n
+	}
+	batch := `{"updates":[{"page_id":"` + row + `","properties":{"note":"changed"}}]}`
+
+	narrowed := &user{ID: f.owner, TokenKind: tokenKindAPI, TokenScope: "write", TokenWorkspaces: []string{f.team}}
+	if _, err := callTool(t, f.s, narrowed, "set_properties", batch); err == nil || strings.Contains(note(), "changed") {
+		t.Errorf("a token narrowed to another workspace wrote the row: %v, %s", err, note())
+	}
+	if _, err := callTool(t, f.s, narrowed, "delete_comment", `{"comment_id":"`+comment+`"}`); err == nil || comments() != 1 {
+		t.Errorf("a token narrowed to another workspace deleted the comment: %v", err)
+	}
+
+	f.s.db.Exec(`UPDATE workspaces SET agent_access = 'closed' WHERE id = ?`, f.other)
+	open := &user{ID: f.owner, TokenKind: tokenKindAPI, TokenScope: "write"}
+	if _, err := callTool(t, f.s, open, "set_properties", batch); err == nil || strings.Contains(note(), "changed") {
+		t.Errorf("an agent wrote into a workspace closed to agents: %v, %s", err, note())
+	}
+	if _, err := callTool(t, f.s, open, "delete_comment", `{"comment_id":"`+comment+`"}`); err == nil || comments() != 1 {
+		t.Errorf("an agent deleted a comment in a workspace closed to agents: %v", err)
+	}
+
+	// Where the credential may go, the batch works, and lands in the
+	// activity log like a single write.
+	f.s.db.Exec(`UPDATE workspaces SET agent_access = '' WHERE id = ?`, f.other)
+	if _, err := callTool(t, f.s, open, "set_properties", batch); err != nil || !strings.Contains(note(), "changed") {
+		t.Fatalf("the batch where the token may write: %v, %s", err, note())
+	}
+	var logged int
+	f.s.db.QueryRow(`SELECT COUNT(*) FROM audit_log WHERE page_id = ? AND action = 'set_properties'`, row).Scan(&logged)
+	if logged == 0 {
+		t.Error("a batch write left no entry in the activity log")
+	}
+}
