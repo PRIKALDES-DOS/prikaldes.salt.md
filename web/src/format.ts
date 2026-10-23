@@ -249,6 +249,73 @@ export function toDayString(d: Date): string {
   return `${d.getFullYear()}-${String(d.getMonth() + 1).padStart(2, '0')}-${String(d.getDate()).padStart(2, '0')}`;
 }
 
+function daysInMonthFor(year: number, month: number): number {
+  return new Date(year, month + 1, 0).getDate();
+}
+
+const SMART_TOKEN = /^(today|yesterday|tomorrow)([+-]\d+)?([dwmy])?$/;
+
+/** A half-typed relative day ("today-"): the word and the sign are there, the
+ *  offset is not. Not a value yet: a condition holding one waits instead of
+ *  filtering (see filterIsArmed and the server's where()). A bare word is
+ *  complete, and "today-1" without a unit counts days: only the dangling sign
+ *  waits. */
+export function isUnfinishedRelativeDay(value: string): boolean {
+  return /^(today|yesterday|tomorrow)[+-]$/.test(value.toLowerCase().replace(/ /g, ''));
+}
+
+/** The calendar day a filter value names, in YYYY-MM-DD form, or null for a
+ *  plain date and for anything unrecognised: both pass through untouched.
+ *
+ *  Relative days ("today", "yesterday", "tomorrow", "today-1M") resolve
+ *  against todayStr, which defaults to today() and so follows the timezone
+ *  setting. The server resolves the same words on every query (see
+ *  server/smartdate.go): the grammar and the month clamp match exactly, and
+ *  check-format.mjs pins the agreement across timezones. */
+export function resolveSmartDate(value: string, todayStr?: string): string | null {
+  const norm = value.toLowerCase().replace(/ /g, '');
+  let base = '';
+  let off = 0;
+  let unit: 'd' | 'w' | 'm' | 'y' = 'd';
+  if (norm === 'today' || norm === 'yesterday' || norm === 'tomorrow') {
+    base = norm;
+  } else {
+    const m = SMART_TOKEN.exec(norm);
+    if (!m || !m[2]) return null;
+    const n = parseInt(m[2], 10);
+    if (!Number.isFinite(n) || Math.abs(n) > 9999) return null;
+    base = m[1];
+    off = n;
+    unit = (m[3] ?? 'd') as 'd' | 'w' | 'm' | 'y';
+  }
+  const tp = parseDay(todayStr ?? today());
+  if (!tp) return null;
+  // Normalise the base day through the Date constructor first: yesterday on
+  // March 1 is February 28, and the month shift below must start from there,
+  // not from day zero. The Go side normalises the same way via time.Date.
+  const anchorDate = new Date(
+    tp.y,
+    tp.m - 1,
+    tp.d + (base === 'yesterday' ? -1 : base === 'tomorrow' ? 1 : 0),
+  );
+  const y = anchorDate.getFullYear();
+  const mo = anchorDate.getMonth();
+  const d = anchorDate.getDate();
+  if (unit === 'w') return toDayString(new Date(y, mo, d + off * 7));
+  if (unit === 'm' || unit === 'y') {
+    const total = y * 12 + mo + (unit === 'y' ? off * 12 : off);
+    const ry = Math.floor(total / 12);
+    const rm = ((total % 12) + 12) % 12;
+    return toDayString(new Date(ry, rm, Math.min(d, daysInMonthFor(ry, rm))));
+  }
+  return toDayString(new Date(y, mo, d + off));
+}
+
+/** True when the value is a relative day rather than a plain date. */
+export function isSmartDate(value: string): boolean {
+  return resolveSmartDate(value) !== null;
+}
+
 // ---- Calendars ----
 
 /** Which day the week starts on, 0 = Sunday … 6 = Saturday.
