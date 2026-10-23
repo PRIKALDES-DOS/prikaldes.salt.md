@@ -1,11 +1,6 @@
 package server
 
-import (
-	"reflect"
-	"testing"
-)
-
-func boolPtr(v bool) *bool { return &v }
+import "testing"
 
 // normalizePrefs is the only thing standing between a submitted JSON body and a
 // column that the frontend later hands to Intl. Its job is not to be clever —
@@ -82,22 +77,21 @@ func TestNormalizePrefs(t *testing.T) {
 			want: userPrefs{Language: "de", Region: "de-AT", TimeZone: "", Clock: "24", WeekStart: "mon"},
 		},
 		{
-			// The row-opening choice needs no cleaning — it is already a bool —
-			// but it must survive the round trip untouched either way.
-			name: "an explicit row-opening choice survives either way",
-			in:   userPrefs{OpenRowsNewTab: boolPtr(false)},
-			want: userPrefs{OpenRowsNewTab: boolPtr(false)},
+			name: "rows open in a new tab only on an explicit on",
+			in:   userPrefs{Language: "de", OpenRowsNewTab: "on"},
+			want: userPrefs{Language: "de", OpenRowsNewTab: "on"},
 		},
 		{
-			name: "an absent row-opening choice stays absent (automatic)",
-			in:   userPrefs{Language: "de"},
+			// "off" would be a third state meaning the same as automatic.
+			name: "anything else for the row-opening choice is automatic",
+			in:   userPrefs{Language: "de", OpenRowsNewTab: "off"},
 			want: userPrefs{Language: "de"},
 		},
 	}
 	for _, c := range cases {
 		t.Run(c.name, func(t *testing.T) {
 			got := normalizePrefs(c.in)
-			if !reflect.DeepEqual(got, c.want) {
+			if got != c.want {
 				t.Errorf("normalizePrefs(%+v)\n got  %+v\n want %+v", c.in, got, c.want)
 			}
 		})

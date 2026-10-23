@@ -103,8 +103,8 @@ export type Prefs = {
   clock?: string;
   weekStart?: string;
   // Collection rows open in a new tab on a plain click only when the
-  // account opted in. Absent means automatic, which is off.
-  openRowsNewTab?: boolean;
+  // account opted in: 'on'. '' is automatic, which is off.
+  openRowsNewTab?: '' | 'on';
 };
 
 let prefs: Prefs = {};

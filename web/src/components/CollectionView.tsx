@@ -490,12 +490,12 @@ export default function CollectionView({ collectionId, pages, tagColors, onNavig
       lastGesture = Date.now();
     };
     const onScroll = (e: Event) => {
-      const t = e.target as HTMLElement | null;
+      const el = e.target as HTMLElement | null;
       if (
-        t instanceof HTMLElement &&
-        (t.classList.contains('board') || t.classList.contains('table-wrap') || t.classList.contains('tl-scroll'))
+        el instanceof HTMLElement &&
+        (el.classList.contains('board') || el.classList.contains('table-wrap') || el.classList.contains('tl-scroll'))
       ) {
-        if (Date.now() - lastGesture < 2000) writeViewScroll(collectionId, viewId, t.scrollLeft);
+        if (Date.now() - lastGesture < 2000) writeViewScroll(collectionId, viewId, el.scrollLeft);
       }
     };
     root.addEventListener('scroll', onScroll, { capture: true, passive: true });

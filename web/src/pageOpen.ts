@@ -45,7 +45,7 @@ export function openPageAux(
 // ⌘/Ctrl (or the middle button) adds a tab beside it. The account can opt
 // into always opening rows in a new tab instead (server prefs, default off);
 // the modifier then changes nothing, exactly as in a browser.
-export const collectionRowNewTab = (): boolean => getPrefs().openRowsNewTab === true;
+export const collectionRowNewTab = (): boolean => getPrefs().openRowsNewTab === 'on';
 
 /** A click on a collection row, with or without ⌘/Ctrl. */
 export function openCollectionRow(

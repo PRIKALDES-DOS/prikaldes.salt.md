@@ -649,8 +649,10 @@ function PageHeader({
       lastGesture = Date.now();
     };
     const maySave = () => Date.now() - lastGesture < 2000;
+    let lastTop = el.scrollTop;
     const onScroll = () => {
       const s = el.scrollTop;
+      lastTop = s;
       if (!scrolled && s > 110) {
         scrolled = true;
         el.classList.add('scrolled');
@@ -673,8 +675,12 @@ function PageHeader({
     return () => {
       cancelAnimationFrame(saveRaf);
       // A switch made mid-glide keeps the last user position rather than the
-      // one before it — but never an anchoring shift (no gesture, no save).
-      if (maySave()) writePageScroll(pageId, el.scrollTop);
+      // one before it, but never an anchoring shift (no gesture, no save).
+      // The position is the last one a scroll event saw: by now React has
+      // taken the old page body out of the document, and its scrollTop reads
+      // 0, which wiped the good value whenever a tab was switched within two
+      // seconds of scrolling.
+      if (maySave()) writePageScroll(pageId, lastTop);
       el.removeEventListener('scroll', onScroll);
       el.removeEventListener('wheel', markGesture);
       el.removeEventListener('touchmove', markGesture);

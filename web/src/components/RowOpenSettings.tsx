@@ -18,15 +18,15 @@ export function RowOpenModal({ onClose }: { onClose: () => void }) {
   const [saving, setSaving] = useState(false);
   const [error, setError] = useState('');
 
-  // Absent is automatic, which means off: rows navigate unless the account
+  // '' is automatic, which means off: rows navigate unless the account
   // explicitly opted into new tabs.
-  const checked = prefs.openRowsNewTab === true;
+  const checked = prefs.openRowsNewTab === 'on';
 
   const save = async () => {
     setSaving(true);
     setError('');
     try {
-      const stored = await api.putPrefs({ ...prefs, openRowsNewTab: checked });
+      const stored = await api.putPrefs({ ...prefs, openRowsNewTab: checked ? 'on' : '' });
       await applyPrefs(stored);
       onClose();
     } catch (e) {
@@ -54,7 +54,7 @@ export function RowOpenModal({ onClose }: { onClose: () => void }) {
             <input
               type="checkbox"
               checked={checked}
-              onChange={(e) => setPrefs({ ...prefs, openRowsNewTab: e.target.checked })}
+              onChange={(e) => setPrefs({ ...prefs, openRowsNewTab: e.target.checked ? 'on' : '' })}
             />
             {t('Open collection rows in a new tab')}
           </label>

@@ -163,30 +163,33 @@ func TestPutPrefsAnswersWithTheCleanedSet(t *testing.T) {
 	}
 }
 
-// The row-opening choice round-trips through the API, and an account that
-// never chose reads as absent (nil): automatic, which means navigation,
-// without any backfill.
+// The row-opening choice round-trips through the API as "on" or "", like
+// every other preference: "" is automatic, which means navigation, and an
+// account that never chose needs no backfill.
 func TestPutPrefsRowOpeningRoundTrip(t *testing.T) {
 	s := testServer(t)
 	uid, cookie := signedIn(t, s, "a@example.com")
 
-	if p := s.loadPrefs(uid); p.OpenRowsNewTab != nil {
-		t.Fatalf("fresh account chose nothing, got %+v", p.OpenRowsNewTab)
+	if p := s.loadPrefs(uid); p.OpenRowsNewTab != "" {
+		t.Fatalf("fresh account chose nothing, got %q", p.OpenRowsNewTab)
 	}
-	rec := putPrefs(t, s, `{"openRowsNewTab":false}`, map[string]string{"Cookie": cookie})
-	if rec.Code != http.StatusOK {
-		t.Fatalf("got %d, want 200", rec.Code)
-	}
-	p := s.loadPrefs(uid)
-	if p.OpenRowsNewTab == nil || *p.OpenRowsNewTab {
-		t.Errorf("stored choice is not false: %+v", p.OpenRowsNewTab)
-	}
-	var got userPrefs
-	if err := json.NewDecoder(rec.Body).Decode(&got); err != nil {
-		t.Fatalf("decode: %v", err)
-	}
-	if got.OpenRowsNewTab == nil || *got.OpenRowsNewTab {
-		t.Errorf("answer does not carry the choice: %+v", got.OpenRowsNewTab)
+	for _, c := range []struct{ body, want string }{
+		{`{"openRowsNewTab":"on"}`, "on"},
+		{`{"openRowsNewTab":""}`, ""},
+		{`{"openRowsNewTab":"on"}`, "on"},
+		{`{"openRowsNewTab":"off"}`, ""},
+	} {
+		rec := putPrefs(t, s, c.body, map[string]string{"Cookie": cookie})
+		if rec.Code != http.StatusOK {
+			t.Fatalf("%s: got %d, want 200", c.body, rec.Code)
+		}
+		var got userPrefs
+		if err := json.NewDecoder(rec.Body).Decode(&got); err != nil {
+			t.Fatalf("decode: %v", err)
+		}
+		if stored := s.loadPrefs(uid).OpenRowsNewTab; got.OpenRowsNewTab != c.want || stored != c.want {
+			t.Errorf("%s: answered %q, stored %q, want %q", c.body, got.OpenRowsNewTab, stored, c.want)
+		}
 	}
 }
 
