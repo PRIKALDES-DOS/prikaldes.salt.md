@@ -205,3 +205,44 @@ func TestToolsThatNameNoPageStillCheckTheCredential(t *testing.T) {
 		t.Error("a batch write left no entry in the activity log")
 	}
 }
+
+// Two more that reach past the page they name: the pages linking to a page
+// (a link can come from another workspace), and resolving a comment by id
+// (the comment can sit on another page than page_id).
+func TestBacklinksAndCommentStatesKeepToTheCredential(t *testing.T) {
+	f := newScopeFixture(t)
+	target := f.s.makePage(t, f.team, f.owner, "", "Shared target", `{}`)
+	source := f.s.makePage(t, f.other, f.owner, "", "Secret source", `{}`)
+	if _, err := f.s.db.Exec(`INSERT INTO links (source_id, target_id) VALUES (?, ?)`, source, target); err != nil {
+		t.Fatalf("link: %v", err)
+	}
+	comment := newID()
+	if _, err := f.s.db.Exec(`INSERT INTO comments (id, page_id, block_id, author_id, author_name, body, created_at)
+		VALUES (?, ?, '', ?, 'Owner', 'open question', ?)`, comment, source, f.owner, now()); err != nil {
+		t.Fatalf("comment: %v", err)
+	}
+	resolved := func() bool {
+		var at *string
+		f.s.db.QueryRow(`SELECT resolved_at FROM comments WHERE id = ?`, comment).Scan(&at)
+		return at != nil
+	}
+	check := func(who string, u *user) {
+		t.Helper()
+		out, err := callTool(t, f.s, u, "get_links", `{"page_id":"`+target+`"}`)
+		if err != nil || strings.Contains(out, "Secret source") || strings.Contains(out, source) {
+			t.Errorf("%s: backlinks showed a page it may not enter: %v %s", who, err, out)
+		}
+		if _, err := callTool(t, f.s, u, "comments",
+			`{"page_id":"`+target+`","action":"resolve","comment_id":"`+comment+`"}`); err == nil || resolved() {
+			t.Errorf("%s: resolved a comment it may not reach: %v", who, err)
+		}
+	}
+	check("narrowed token", &user{ID: f.owner, TokenKind: tokenKindAPI, TokenScope: "write", TokenWorkspaces: []string{f.team}})
+	f.s.db.Exec(`UPDATE workspaces SET agent_access = 'closed' WHERE id = ?`, f.other)
+	check("agent in a closed workspace", &user{ID: f.owner, TokenKind: tokenKindAPI, TokenScope: "write"})
+
+	// The person in a browser still sees the link.
+	if out, err := callTool(t, f.s, &user{ID: f.owner, Name: "Owner"}, "get_links", `{"page_id":"`+target+`"}`); err != nil || !strings.Contains(out, "Secret source") {
+		t.Errorf("the owner lost a backlink: %v %s", err, out)
+	}
+}

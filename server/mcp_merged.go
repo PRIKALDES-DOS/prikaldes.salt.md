@@ -104,7 +104,7 @@ func (s *Server) mcpComments(u *user, pageID, action, body, blockID, commentID s
 		// comment. Without resolving it to its page, a guessed comment id would
 		// write into somebody else's workspace.
 		pid, ok := s.commentPage(commentID)
-		if !ok || !s.canWrite(u.ID, pid) {
+		if !ok || !s.canWrite(u.ID, pid) || !s.credentialMayEnter(u, s.pageWorkspace(pid)) {
 			return "", fmt.Errorf("comment %q not found", commentID)
 		}
 		want := action == "resolve"
@@ -170,7 +170,7 @@ func (s *Server) mcpSetTrashed(pageID string, trashed *bool) (string, error) {
 // than two tools that answer the same question at different zoom levels.
 func (s *Server) mcpGetLinks(u *user, pageID, wsID string, kinds []string, includeNodes bool) (string, error) {
 	if pageID != "" {
-		out, err := s.mcpBacklinks(u.ID, pageID)
+		out, err := s.mcpBacklinks(u, pageID)
 		if err != nil {
 			return "", err
 		}
