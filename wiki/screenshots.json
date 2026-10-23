@@ -227,7 +227,7 @@
       ],
       "takenAt": {
         "web/src/components/NoteTrail.tsx": "160bdbf01513",
-        "server/notelog.go": "3f695c839dbd",
+        "server/notelog.go": "3489d9897c58",
         "web/src/theme.css": "b1c3dece61ce"
       },
       "element": ".trail-wrap"
@@ -588,7 +588,7 @@
       ],
       "takenAt": {
         "web/src/components/AgentConnect.tsx": "e0a5a3a2e940",
-        "server/mcp.go": "8eb2215c047f",
+        "server/mcp.go": "7c6f6f3b9b1b",
         "web/src/theme.css": "b1c3dece61ce"
       },
       "element": ".dialog"
@@ -958,7 +958,7 @@
         }
       ],
       "takenAt": {
-        "server/audit.go": "116fb6f3f15d",
+        "server/audit.go": "a19307a3685a",
         "web/src/theme.css": "b1c3dece61ce"
       },
       "element": ".dialog"
