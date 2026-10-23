@@ -422,7 +422,7 @@ func (s *Server) publicShareBase(r *http.Request) string {
 // an error if SMTP isn't configured or delivery fails; callers surface the
 // invite link regardless so email is a convenience, not a hard dependency.
 func (s *Server) sendMail(to, subject, body string) error {
-	// Verbundener Google-/Microsoft-Account hat Vorrang vor SMTP.
+	// A connected Google or Microsoft account takes precedence over SMTP.
 	if provider, _ := s.mailProviderConfigured(); provider == "google" {
 		return s.sendViaGoogle(to, subject, body)
 	} else if provider == "microsoft" {
