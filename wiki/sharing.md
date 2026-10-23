@@ -215,30 +215,16 @@ behaviour is described below.
 
 ### Publishing a collection
 
-A collection can be published too, from the same globe button, and it renders
-differently: as raw Markdown in a monospaced block. Nothing is turned into a
-web page: the visitor reads the title on the first line with its `#` still in
-front of it, then a pipe table.
+A collection uses the same reader shell with a read-only table. It shows up to
+1,000 immediate, non-trashed rows in collection order, followed by the number
+of additional rows. Private rows are excluded for anonymous visitors. A wide
+table scrolls horizontally and can be focused with the keyboard.
 
-- **Every row that is not in the trash**, in the collection's own order, not
-  the filter, sort or grouping of any [view](views.md). A board's columns and a
-  calendar's dates have no meaning here.
-- **One column per property**, in schema order, with Title first.
-- **Rollup, formula and backrelation columns are empty.** Those values are
-  worked out when the app reads a collection, and the public table does not work
-  them out. The headings are there; the cells are blank.
-- **The other columns print what is stored, not what the app shows you.** A
-  checkbox is `✓` or blank; select and multiselect show the option names; a date
-  is the stored value (`2026-07-18`), never reformatted for the visitor's
-  region; a number can carry trailing zeros (`3.2500`); a checklist stays empty.
-  A relation prints the internal ids of the pages it points at, and a person
-  column prints the internal id of whoever was picked from the member list:
-  ids, not titles and not names.
-- **Rows marked private are left out**, whoever they belong to, your own
-  included. A visitor without an account is nobody's colleague, so the private
-  flag hides a row from the published table just as it hides it from other
-  members.
-- Sub-pages of the rows are not included.
+Columns follow the schema. Values incompatible with the current property type
+are blank. Select options use their names; numbers and checkboxes use readable
+values. Relations, people and computed properties are blank: the public table
+does not publish internal IDs, names or related page titles. Row bodies,
+sub-pages and saved view filters are not included.
 
 ## Sharing more than one page
 

@@ -60,12 +60,12 @@ func (s *Server) handlePublicView(w http.ResponseWriter, r *http.Request) {
 		s.setPublicGrant(w, r, token)
 	}
 	if p.Type == "collection" {
-		md, err := s.collectionMarkdown(p, "")
+		table, err := s.publicCollectionTable(p, nonce)
 		if err != nil {
 			httpError(w, 500, err.Error())
 			return
 		}
-		w.Write([]byte(s.publicDocument(p.Title, `<pre style="white-space:pre-wrap">`+html.EscapeString(md)+`</pre>`, nonce)))
+		w.Write([]byte(table))
 		return
 	}
 	p = publicPageCopy(p, token)
