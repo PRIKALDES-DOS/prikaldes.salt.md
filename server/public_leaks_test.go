@@ -75,11 +75,10 @@ func TestSharedPageCarriesNoCommentsOrHiddenNames(t *testing.T) {
 		t.Error("the workspace name is in the source although the page does not show it")
 	}
 
-	// With a cover that names its origin the name is visible by design, so it
-	// may be there; the rule is "nothing hidden", not "never".
+	// Print preferences never add workspace metadata to the native reader.
 	s.setSetting("pdf_cover", "1")
 	s.setSetting("pdf_workspace", "1")
-	if src := publicSource(t, s, shareForTest(t, s, cookie, page)); !strings.Contains(src, "Internal Payroll Team") {
-		t.Error("a cover set to name the workspace no longer does")
+	if src := publicSource(t, s, shareForTest(t, s, cookie, page)); strings.Contains(src, "Internal Payroll Team") {
+		t.Error("print settings leaked workspace metadata into the reader")
 	}
 }

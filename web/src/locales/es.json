@@ -1135,5 +1135,7 @@
   "That is the newest release.": "Es la versión más reciente.",
   "This copy was installed on the system, not by salt.md, so it is updated by whatever installed it.": "Esta copia se instaló en el sistema, no la instaló salt.md, así que se actualiza por la vía con la que se instaló.",
   "Keep it up to date automatically (checked daily, checksum verified)": "Mantenerlo actualizado automáticamente (se comprueba a diario, con suma de verificación)",
-  "Check now": "Comprobar ahora"
+  "Check now": "Comprobar ahora",
+  "Public link": "Enlace público",
+  "Copy failed; select the link": "No se pudo copiar; selecciona el enlace"
 }

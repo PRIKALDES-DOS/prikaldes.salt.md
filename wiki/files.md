@@ -30,9 +30,11 @@ account or an API token**. Three things follow from how it is served:
 - Every file is delivered with a sandbox policy and `X-Content-Type-Options:
   nosniff`. An uploaded HTML or SVG file can never run a script on the
   application's origin.
-- An anonymous visitor to a [publicly shared page](sharing.md) is not signed
-  in, so images uploaded into that page do not load for them. Shared pages are
-  text and structure; the uploads behind them stay behind the sign-in.
+- An anonymous visitor to a [publicly shared page](sharing.md) receives token-scoped
+  URLs for uploads currently referenced by that page, its icon or cover. Other
+  uploads and child pages stay inaccessible. Password-protected assets require
+  the share password or the short-lived grant from opening the protected page.
+  Revoking or expiring the share disables those URLs; `/files/` stays signed-in only.
 
 ## Adding a file to a page
 

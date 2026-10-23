@@ -1155,6 +1155,7 @@ func (s *Server) handlePublicPage(w http.ResponseWriter, r *http.Request) {
 		httpError(w, 404, "not found")
 		return
 	}
+	p = publicPageCopy(p, r.PathValue("token"))
 	writeJSON(w, map[string]any{
 		"title":   p.Title,
 		"icon":    p.Icon,
