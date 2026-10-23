@@ -219,6 +219,13 @@ func (s *Server) handleExportWorkspace(w http.ResponseWriter, r *http.Request) {
 
 func (s *Server) handleImportWorkspace(w http.ResponseWriter, r *http.Request) {
 	u := requestUser(r)
+	// An import creates a workspace, so it is refused where creating one is
+	// (see handleCreateWorkspace): a narrowed credential could not open it.
+	if narrowedToWorkspaces(u) {
+		httpErrorCode(w, http.StatusForbidden, "workspace_scoped",
+			"This connection is limited to particular workspaces, so it cannot create new ones. It would not be able to open them.")
+		return
+	}
 	r.Body = http.MaxBytesReader(w, r.Body, maxImportZip)
 	if err := r.ParseMultipartForm(maxImportZip); err != nil {
 		httpError(w, 400, "upload too large or invalid")
@@ -394,15 +401,26 @@ func (s *Server) importWorkspaceFS(u *user, fsys fs.FS, opt importOptions) (*imp
 		wsName += " (Import)"
 	}
 
+	// Rules are what agents are told to follow, and only a person sets them
+	// (handleWorkspaceRules is sessionOnly). An archive imported with a token
+	// therefore brings its rules as a PROPOSAL, the same thing an agent may
+	// leave with propose_workspace_rules, for an admin to apply in the browser.
+	// Set directly, an import was the way around that gate.
+	rules, proposal, proposedBy, proposedAt := manifest.Workspace.Rules, "", "", ""
+	if u.TokenScope != "" && strings.TrimSpace(rules) != "" {
+		rules, proposal, proposedBy, proposedAt = "", manifest.Workspace.Rules, u.ID, now()
+	}
+
 	wsID := newID()
 	tx, err := s.db.Begin()
 	if err != nil {
 		return nil, err
 	}
 	defer tx.Rollback()
-	if _, err := tx.Exec(`INSERT INTO workspaces (id, name, created_at, icon, image, rules, owner_id) VALUES (?, ?, ?, ?, ?, ?, ?)`,
+	if _, err := tx.Exec(`INSERT INTO workspaces (id, name, created_at, icon, image, rules, rules_proposal, rules_proposal_by, rules_proposal_at, owner_id)
+		VALUES (?, ?, ?, ?, ?, ?, ?, ?, ?, ?)`,
 		wsID, wsName, now(), manifest.Workspace.Icon, remap.Replace(manifest.Workspace.Image),
-		manifest.Workspace.Rules, u.ID); err != nil {
+		rules, proposal, proposedBy, proposedAt, u.ID); err != nil {
 		return nil, err
 	}
 	if _, err := tx.Exec(`INSERT INTO workspace_members (workspace_id, user_id, role) VALUES (?, ?, 'admin')`, wsID, u.ID); err != nil {

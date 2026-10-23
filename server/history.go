@@ -246,6 +246,14 @@ func (s *Server) handleDeleteComment(w http.ResponseWriter, r *http.Request) {
 	u := requestUser(r)
 	var ws string
 	s.db.QueryRow(`SELECT workspace_id FROM pages WHERE id = ?`, pageID).Scan(&ws)
+	// And the credential has to be allowed into that workspace: the request
+	// names a comment, not a page, so no page check covered it, and a token
+	// deleted comments wherever its person had written one (delete_comment over
+	// MCP had the same hole).
+	if !s.credentialMayEnter(u, ws) {
+		httpError(w, 404, "comment not found")
+		return
+	}
 	if authorID != u.ID && !s.isWorkspaceAdmin(u.ID, ws) {
 		httpError(w, 403, "forbidden")
 		return

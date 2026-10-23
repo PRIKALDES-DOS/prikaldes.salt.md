@@ -88,8 +88,7 @@ func (s *Server) notesChanged(pageID string) {
 	if ws == "" {
 		return
 	}
-	s.events.broadcastTo(fmt.Sprintf(`{"type":"notes","id":%q}`, pageID),
-		func(uid string) bool { return s.isMember(uid, ws) })
+	s.events.broadcastTo(fmt.Sprintf(`{"type":"notes","id":%q}`, pageID), s.inWorkspace(ws))
 }
 
 func (s *Server) pageNotes(pageID string) ([]pageNote, error) {

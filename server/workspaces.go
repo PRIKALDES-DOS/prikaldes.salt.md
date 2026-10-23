@@ -520,8 +520,7 @@ func (s *Server) handleListWorkspaces(w http.ResponseWriter, r *http.Request) {
 		httpError(w, 500, err.Error())
 		return
 	}
-	defer rows.Close()
-	list := []workspaceJSON{}
+	all := []workspaceJSON{}
 	for rows.Next() {
 		var x workspaceJSON
 		var personal, autoJoin int
@@ -535,7 +534,18 @@ func (s *Server) handleListWorkspaces(w http.ResponseWriter, r *http.Request) {
 		if x.Role != "admin" {
 			x.RulesProposal, x.RulesProposalBy, x.RulesProposalAt = "", "", ""
 		}
-		list = append(list, x)
+		all = append(all, x)
+	}
+	rows.Close() // drain before the reach check below, which queries (one connection)
+	// Only what the credential may enter, the same answer list kind=workspaces
+	// gives. This route handed any token the name, the rules and the pending
+	// proposal of every workspace on the account. A browser session passes
+	// everything, as before.
+	list := []workspaceJSON{}
+	for _, x := range all {
+		if s.credentialMayEnter(requestUser(r), x.ID) {
+			list = append(list, x)
+		}
 	}
 	writeJSON(w, list)
 }
@@ -579,6 +589,15 @@ func (s *Server) handleUpdateWorkspace(w http.ResponseWriter, r *http.Request) {
 		args = append(args, n)
 	}
 	if body.AgentAccess != nil {
+		// The rule is what a PERSON decides about agents, so no credential may
+		// change it: a signed-in agent, which a strict workspace admits, opened
+		// that workspace to every permanent key with one call. Same line as the
+		// rules (handleWorkspaceRules is sessionOnly).
+		if requestUser(r).TokenScope != "" {
+			httpErrorCode(w, http.StatusForbidden, "session_required",
+				"This action requires signing in through a browser. An API token is not enough.")
+			return
+		}
 		v := strings.TrimSpace(*body.AgentAccess)
 		if v != "" && !validAgentAccess(v) {
 			httpErrorCode(w, 400, "bad_agent_access", "agentAccess must be open, strict or closed")

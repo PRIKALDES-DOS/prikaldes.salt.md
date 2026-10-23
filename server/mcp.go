@@ -791,7 +791,12 @@ func (s *Server) mcpCall(u *user, name string, rawArgs json.RawMessage, publicBa
 	}
 	idemKey := ""
 	if mutating && args.IdempotencyKey != "" {
-		idemKey = userID + ":" + name + ":" + args.IdempotencyKey
+		// Per CREDENTIAL, not per account: a cached reply comes back before any
+		// gate below runs, so a key two credentials of one person happened to
+		// share handed the narrower one the wider one's answer (a public link to
+		// a page it may not read, say). Kind and workspace list are what the
+		// gates look at; two credentials alike in both may share a reply.
+		idemKey = userID + ":" + u.TokenKind + ":" + strings.Join(u.TokenWorkspaces, ",") + ":" + name + ":" + args.IdempotencyKey
 		if cached, ok := s.idempotentResult(idemKey); ok {
 			return cached, nil
 		}
@@ -1229,8 +1234,8 @@ func (s *Server) mcpCall(u *user, name string, rawArgs json.RawMessage, publicBa
 		// happened.
 		if name != "working_on" && name != "note" && name != "set_properties" {
 			ws := s.pageWorkspace(args.PageID)
-			if ws == "" { // create_page has no page_id arg — attribute to the actor's workspace
-				ws = s.userDefaultWorkspace(userID)
+			if ws == "" {
+				ws = s.mcpAuditWorkspace(u, name, parentID, args.DatabaseID, args.TemplateID, args.WorkspaceID, result)
 			}
 			s.audit("agent", userID, u.Name+" (MCP)", name, args.PageID, ws, result)
 		}
@@ -1239,6 +1244,46 @@ func (s *Server) mcpCall(u *user, name string, rawArgs json.RawMessage, publicBa
 		s.storeIdempotent(idemKey, result)
 	}
 	return result, err
+}
+
+// mcpAuditWorkspace names the workspace a call that names no page wrote into,
+// so its log entry lands in THAT workspace's log. All of them used to land in
+// the account's default workspace, with the tool's reply as the detail, and
+// create_page's reply is the new page's title: a page an agent made in one
+// workspace stood by name in another's log, readable by its members and by
+// every credential narrowed to it.
+//
+// The order is the one the tools themselves follow: a template decides over a
+// parent (create_page), a database over a parent (import_url), and either over
+// a named workspace. "" (no workspace) for what belongs to none, a page-less
+// upload for one.
+func (s *Server) mcpAuditWorkspace(u *user, tool, parentID, databaseID, templateID, wsID, reply string) string {
+	switch {
+	case templateID != "":
+		return s.pageWorkspace(templateID)
+	case databaseID != "":
+		return s.pageWorkspace(databaseID)
+	case parentID != "":
+		return s.pageWorkspace(parentID)
+	case wsID != "":
+		return wsID
+	}
+	switch tool {
+	case "create_page", "create_database", "import_url":
+		// Where mcpCreateWorkspaceTarget puts something new without a parent.
+		return s.createWorkspaceFor(u)
+	case "propose_workspace_rules":
+		return s.defaultWorkspaceFor(u)
+	case "workspace":
+		// A new workspace: its own log. The reply carries the id, the same way
+		// blueprintWorkspace reads it.
+		if i := strings.LastIndex(reply, "with id "); i >= 0 {
+			if f := strings.Fields(reply[i+len("with id "):]); len(f) > 0 {
+				return f[0]
+			}
+		}
+	}
+	return ""
 }
 
 func (s *Server) mcpSearch(u *user, q string) (string, error) {

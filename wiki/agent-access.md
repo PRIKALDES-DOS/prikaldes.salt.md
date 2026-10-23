@@ -214,11 +214,9 @@ For a bound credential:
   Adding the new workspace to the list automatically would be a credential
   widening its own reach.
 
-One list is not narrowed this way: `GET /api/workspaces`, the plain REST list
-the browser uses, returns every workspace the *account* is a member of, with its
-name and role, whatever the credential was granted. The MCP list is the one that
-was built to withhold; treat the REST list as showing the account, not the
-credential.
+The plain REST list follows the same rule: `GET /api/workspaces` answers a
+credential with the workspaces it may enter, without a count of the rest, and a
+browser session with every workspace the account is a member of.
 
 ## What a workspace decides
 

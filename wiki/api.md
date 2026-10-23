@@ -174,9 +174,10 @@ list of workspaces. It is not an administrator's pass.
   `workspace_scoped`.
 - **Administration needs a browser.** Account management, *changing* instance
   settings, the instance backup, invitations, two-factor, minting further
-  tokens, workspace rules, emergency access and discarding a page's raw trail
-  all refuse a token with `403` and the code `session_required`. Without that
-  rule a token handed to an agent could issue itself a wider one.
+  tokens, the calendar key, workspace rules, a workspace's rule for agents,
+  emergency access and discarding a page's raw trail all refuse a token with
+  `403` and the code `session_required`. Without that rule a token handed to an
+  agent could issue itself a wider one.
 - **Reading the admin views is the exception.** `GET /api/settings` and
   `GET /api/admin/info` check the admin flag and nothing else, so an admin's
   token, read-only included, gets the settings object and the instance figures.
@@ -494,10 +495,14 @@ itself reversible. [Comments and notes](comments-and-notes.md) and
 (`open`, `strict` or `closed`) and `treeMode` (`split` or `mixed`). Two of them
 answer `403` even to a workspace admin: `autoJoin` (every new account becomes a
 member) is an instance-wide decision and belongs to the owner, and a personal
-space can never be opened to everyone at all.
+space can never be opened to everyone at all. `agentAccess` needs a browser
+sign-in and answers a token `session_required`: what agents may do is a
+person's decision, not an agent's.
 
 **`POST /api/workspaces` has two refusals worth expecting.** A workspace-scoped
-credential gets `403` with `workspace_scoped`. And when an admin has switched
+credential gets `403` with `workspace_scoped`, and so it does from
+`POST /api/workspaces/import` and `POST /api/library/{id}`, which create a
+workspace as well. And when an admin has switched
 user-created workspaces off, everybody who is not an admin gets `403` with
 "creating workspaces is disabled on this instance. Ask an admin".
 
@@ -562,7 +567,9 @@ property. Each comes as an `https:` and a `webcal:` url pointing at
 carries its own key, because a calendar app has nowhere to put a header.
 `GET /api/ics?rotate=1` throws the old token away and mints a new one, which
 breaks every subscription already set up; that is what you want when a link
-has gone somewhere it should not have.
+has gone somewhere it should not have. Both need a browser sign-in: the feed
+reaches every workspace of the account, so a token, however narrowed, gets
+`session_required` instead of that key.
 
 `GET /api/skill` downloads the agent skill this instance generates for itself,
 as a zip ([the skill](skill.md)). Pass `?workspace={id}` to aim it at one

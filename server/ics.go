@@ -183,16 +183,28 @@ func (s *Server) handleICSFeed(w http.ResponseWriter, r *http.Request) {
 
 	var b strings.Builder
 	name := "salt.md"
+	inScope := func(wsID string) bool {
+		for _, w := range ws {
+			if w == wsID {
+				return true
+			}
+		}
+		return false
+	}
 	if scopeCol != "" {
 		// The calendar's NAME is what the subscriber sees in their app, so it
 		// says which collection or workspace this feed is — three feeds called
 		// "salt.md" would be indistinguishable there.
-		var title string
-		s.db.QueryRow(`SELECT title FROM pages WHERE id = ?`, scopeCol).Scan(&title)
-		if title != "" {
+		//
+		// Only for a collection the subscriber may read. The title was looked
+		// up for any id, so the calendar name gave away the title of any page
+		// on the instance; the rows below were checked, the name was not.
+		var title, colWS string
+		s.db.QueryRow(`SELECT title, workspace_id FROM pages WHERE id = ?`, scopeCol).Scan(&title, &colWS)
+		if title != "" && inScope(colWS) && !s.forbiddenPrivateAncestor(userID, scopeCol, colWS) {
 			name = "salt.md · " + title
 		}
-	} else if scopeWS != "" {
+	} else if scopeWS != "" && inScope(scopeWS) {
 		var title string
 		s.db.QueryRow(`SELECT name FROM workspaces WHERE id = ?`, scopeWS).Scan(&title)
 		if title != "" {

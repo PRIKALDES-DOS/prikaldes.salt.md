@@ -204,7 +204,11 @@ func New(dataDir string, dist fs.FS) (*Server, error) {
 	m.HandleFunc("POST /api/invites", s.auth(s.sessionOnly(s.handleCreateInvite)))
 	m.HandleFunc("GET /api/invites/{token}", s.handleInviteInfo)
 	m.HandleFunc("POST /api/invites/{token}/accept", s.handleAcceptInvite)
-	m.HandleFunc("GET /api/ics", s.auth(s.handleICSInfo))
+	// The calendar key is a credential of its own: /ics/<key> answers without a
+	// sign-in, for every workspace of the account. Handing it to a token let a
+	// token narrowed to one workspace (or kept out by a workspace's rule) read
+	// the dated rows of all of them, and rotating it is a GET.
+	m.HandleFunc("GET /api/ics", s.auth(s.sessionOnly(s.handleICSInfo)))
 	m.HandleFunc("GET /ics/{token}", s.handleICSFeed)
 	m.HandleFunc("GET /api/2fa", s.auth(s.sessionOnly(s.handle2FAStatus)))
 	m.HandleFunc("POST /api/2fa/setup", s.auth(s.sessionOnly(s.handle2FASetup)))
@@ -287,10 +291,13 @@ func New(dataDir string, dist fs.FS) (*Server, error) {
 	m.HandleFunc("GET /api/library", s.auth(s.handleLibrary))
 	m.HandleFunc("POST /api/library/{id}", s.auth(s.handleUseBlueprint))
 	// Break-glass: only the owner may request it; the people responsible for
-	// the workspace concerned may view and end it too.
+	// the workspace concerned may view and end it too. All three in a browser
+	// session: emergency access stays with a person at a keyboard (see
+	// sessionOnly), and the two routes below took any token and asked nothing
+	// about it, so an agent read the reasons and ended grants anywhere.
 	m.HandleFunc("POST /api/workspaces/{id}/break-glass", s.ownerOnly(s.handleBreakGlass))
-	m.HandleFunc("GET /api/workspaces/{id}/break-glass", s.auth(s.handleListBreakGlass))
-	m.HandleFunc("DELETE /api/workspaces/{id}/break-glass/{grantId}", s.auth(s.handleRevokeBreakGlass))
+	m.HandleFunc("GET /api/workspaces/{id}/break-glass", s.auth(s.sessionOnly(s.handleListBreakGlass)))
+	m.HandleFunc("DELETE /api/workspaces/{id}/break-glass/{grantId}", s.auth(s.sessionOnly(s.handleRevokeBreakGlass)))
 	m.HandleFunc("PATCH /api/workspaces/{id}", s.auth(s.handleUpdateWorkspace))
 	// Rules are what agents are told to follow, so no API token may write them
 	// (sessionOnly) — see handleWorkspaceRules. Agents may PROPOSE rules over

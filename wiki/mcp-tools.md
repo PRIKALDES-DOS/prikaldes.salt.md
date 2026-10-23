@@ -149,8 +149,10 @@ down` as an ordinary tool error. Over the body limit the server refuses
 
 Every writing tool accepts an `idempotency_key`. A retried call carrying the
 same key returns the first call's result instead of doing the work twice; the
-key is scoped per account and per tool. It appears in no tool schema, so a
-client that validates strictly will strip it.
+key is scoped per credential (the account, the kind of credential and the
+workspaces it was given) and per tool, so one credential's answer never comes
+back to another. It appears in no tool schema, so a client that validates
+strictly will strip it.
 
 `get_page` accepts `recursive` as a synonym for `include_children`, also
 undeclared.

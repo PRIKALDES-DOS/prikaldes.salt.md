@@ -169,7 +169,7 @@ func (s *Server) presenceChanged(pageID string) {
 	if ws == "" {
 		return
 	}
-	s.events.broadcastTo(`{"type":"presence"}`, func(uid string) bool { return s.isMember(uid, ws) })
+	s.events.broadcastTo(`{"type":"presence"}`, s.inWorkspace(ws))
 }
 
 // handlePresence lists what the caller may see. The permission check is per
