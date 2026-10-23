@@ -2282,12 +2282,16 @@ function TableView({
     const widthAt = (clientX: number) => Math.max(64, Math.round(from + clientX - x0));
     document.body.classList.add('is-col-resizing');
     const move = (ev: PointerEvent) => setDrag({ key, px: widthAt(ev.clientX) });
-    const up = (ev: PointerEvent) => {
+    const stop = () => {
       document.removeEventListener('pointermove', move);
       document.removeEventListener('pointerup', up);
+      document.removeEventListener('pointercancel', stop);
       document.body.classList.remove('is-col-resizing');
-      const px = widthAt(ev.clientX);
       setDrag(null);
+    };
+    const up = (ev: PointerEvent) => {
+      stop();
+      const px = widthAt(ev.clientX);
       // A click that moved nothing is not a resize. Without this the two clicks
       // of a double-click each stored the unchanged width first, and the reset
       // behind them had to undo two writes nobody asked for.
@@ -2297,6 +2301,10 @@ function TableView({
     };
     document.addEventListener('pointermove', move);
     document.addEventListener('pointerup', up);
+    // A touch the browser takes over for scrolling ends in pointercancel, not
+    // pointerup. Without this the body kept is-col-resizing, and no text could
+    // be selected anywhere until a reload.
+    document.addEventListener('pointercancel', stop);
   };
 
   // Double-click gives a column back to the content: the entry is REMOVED
