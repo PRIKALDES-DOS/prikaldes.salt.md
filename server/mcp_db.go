@@ -43,6 +43,9 @@ func (s *Server) mcpQueryRows(u *user, pageID string, flat []rowFilter, groups [
 	if offset < 0 {
 		offset = 0
 	}
+	if err := s.checkDayValues(pageID, append([][]rowFilter{flat}, groups...)...); err != nil {
+		return "", err
+	}
 	// Filter values may arrive as an option NAME as well (see set_properties).
 	resolved := make([][]rowFilter, len(groups))
 	for i, g := range groups {

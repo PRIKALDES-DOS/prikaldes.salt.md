@@ -294,3 +294,68 @@ func TestSmartDateTodayOverMCP(t *testing.T) {
 		t.Errorf("query_rows without today answered %s, want total 1 (the server day)", plain)
 	}
 }
+
+// A value that is not a day, a typo or a word half typed, waits on a date
+// property instead of comparing as text: "after yesterdy" emptied the table,
+// and the interface saved the view like that. contains stays a text search,
+// a timed value is a day, and other properties keep comparing literally.
+func TestDateFilterWaitsForADay(t *testing.T) {
+	s, col := filterFixture(t)
+	var ws string
+	if err := s.db.QueryRow(`SELECT workspace_id FROM pages WHERE id = ?`, col).Scan(&ws); err != nil {
+		t.Fatal(err)
+	}
+	// A fifth row without a date: an empty op whose value was dropped must
+	// not turn into is_not_empty, which would leave this one out.
+	if _, err := s.db.Exec(`INSERT INTO pages (id, parent_id, workspace_id, title, type, props, position, created_at, updated_at)
+		VALUES (?, ?, ?, 'Undated', 'row', '{"klasse":"b"}', 4, ?, ?)`, newID(), col, ws, now(), now()); err != nil {
+		t.Fatal(err)
+	}
+	for _, f := range []rowFilter{
+		{Prop: "datum", Op: "gt", Value: "yesterdy"},
+		{Prop: "datum", Value: "toda"},
+		{Prop: "datum", Op: "is_not", Value: "next week"},
+		{Prop: "datum", Op: "between", Value: "2026-01-01", Value2: "end of june"},
+		{Prop: "datum", Op: "is", Values: []string{"tomorow", "todya"}},
+	} {
+		if n := count(t, s, col, f); n != 5 {
+			t.Errorf("%+v returned %d rows, want all 5: a value that is not a day must not filter", f, n)
+		}
+	}
+	for _, c := range []struct {
+		f    rowFilter
+		want int
+	}{
+		{rowFilter{Prop: "datum", Op: "is", Values: []string{"2026-03-15", "todya"}}, 1},
+		{rowFilter{Prop: "datum", Op: "contains", Value: "2026-03"}, 1},
+		{rowFilter{Prop: "datum", Op: "gt", Value: "2026-05-20T10:00"}, 1},
+		{rowFilter{Prop: "klasse", Op: "is", Value: "yesterdy"}, 0},
+	} {
+		if n := count(t, s, col, c.f); n != c.want {
+			t.Errorf("%+v returned %d rows, want %d", c.f, n, c.want)
+		}
+	}
+
+	// An agent hears about it instead of getting every row back.
+	var uid string
+	if err := s.db.QueryRow(`SELECT id FROM users WHERE email = 'filter@example.com'`).Scan(&uid); err != nil {
+		t.Fatal(err)
+	}
+	u := &user{ID: uid, Name: "Test"}
+	if _, err := callTool(t, s, u, "query_rows",
+		`{"page_id":"`+col+`","filter":[{"property":"datum","op":"gt","value":"yesterdy"}]}`); err == nil || !strings.Contains(err.Error(), "is not a day") {
+		t.Errorf("query_rows with a typo answered %v, want an error naming the value", err)
+	}
+	if out, err := callTool(t, s, u, "query_rows",
+		`{"page_id":"`+col+`","filter":[{"property":"datum","op":"contains","value":"2026-03"}]}`); err != nil || !strings.Contains(out, `"total":1`) {
+		t.Errorf("query_rows contains 2026-03 answered %q, %v; want total 1", out, err)
+	}
+	if _, err := callTool(t, s, u, "set_view",
+		`{"page_id":"`+col+`","type":"table","name":"Typo","filters":[{"property":"datum","op":"between","value":"today-1m","value2":"todya"}]}`); err == nil || !strings.Contains(err.Error(), "is not a day") {
+		t.Errorf("set_view with a typo answered %v, want an error naming the value", err)
+	}
+	if _, err := callTool(t, s, u, "set_view",
+		`{"page_id":"`+col+`","type":"table","name":"Recent","filters":[{"property":"datum","op":"between","value":"today-1m","value2":"today"}]}`); err != nil {
+		t.Errorf("set_view with relative days: %v", err)
+	}
+}

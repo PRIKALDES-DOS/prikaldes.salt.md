@@ -4,7 +4,7 @@ import { onRefresh } from '../pwa';
 import Portal from './Portal';
 import { useBoardDrag } from '../boardDrag';
 import { tagColorClass } from '../tags';
-import { compare, firstWeekday, formatDay, formatMonth, isUnfinishedRelativeDay, resolveSmartDate, toDayString, today, weekdayNames } from '../format';
+import { compare, firstWeekday, formatDay, formatMonth, isReadableDay, isUnfinishedRelativeDay, resolveSmartDate, toDayString, today, weekdayNames } from '../format';
 import { plural, t } from '../i18n';
 import { confirm, promptText } from '../dialog';
 import type {
@@ -159,31 +159,35 @@ export function filterValues(f: Filter): string[] {
  *  not filter: comparing against the empty string emptied the table the moment
  *  somebody added "Date is …", before they had typed a thing, which is what
  *  made the date filter look broken. `is_empty` is the deliberate version.
- *  A half-typed relative day ("today-") waits the same way. */
-export function filterIsArmed(f: Filter): boolean {
+ *  A half-typed relative day ("today-") waits the same way, and on a date
+ *  property so does anything that is not a day yet (see liveValue). */
+export function filterIsArmed(f: Filter, isDate = false): boolean {
   const op = f.op ?? (f.value ? 'is' : 'is_not_empty');
   if (op === 'is_empty' || op === 'is_not_empty') return true;
-  if (op === 'between')
-    return (
-      !!f.value &&
-      (f.value2 ?? '') !== '' &&
-      !isUnfinishedRelativeDay(f.value ?? '') &&
-      !isUnfinishedRelativeDay(f.value2 ?? '')
-    );
+  const live = (v: string) => liveValue(v, op, isDate);
+  if (op === 'between') return !!f.value && (f.value2 ?? '') !== '' && live(f.value ?? '') && live(f.value2 ?? '');
   const vals = filterValues(f);
-  return vals.length > 0 && vals.some((v) => !isUnfinishedRelativeDay(v));
+  return vals.length > 0 && vals.some(live);
+}
+
+/** May this value take part in the comparison? On a date property only a day
+ *  or a relative day that resolves can (isReadableDay), except under
+ *  "contains", which looks for text. Elsewhere only the dangling sign of a
+ *  half-typed relative day waits. The server drops the same values. */
+function liveValue(v: string, op: FilterOp, isDate: boolean): boolean {
+  return isDate && op !== 'contains' ? isReadableDay(v) : !isUnfinishedRelativeDay(v);
 }
 
 function matchesFilter(row: Row, f: Filter, isDate: boolean): boolean {
   const v = row.props[f.property];
   const op = f.op ?? (f.value ? 'is' : 'is_not_empty');
-  if (!filterIsArmed(f)) return true;
+  if (!filterIsArmed(f, isDate)) return true;
   // A relative day names a different date every day. Resolve it now — the
   // same way the server resolves it per query — or the rows the server sent
   // and the rows shown here would disagree. Date properties only: a status
   // option named "Today" must keep matching the option, not the date.
   const day = (s: string) => (isDate ? (resolveSmartDate(s) ?? s) : s);
-  const live = (s: string) => !isUnfinishedRelativeDay(s);
+  const live = (s: string) => liveValue(s, op, isDate);
   const value = day(f.value ?? '');
   const vals = filterValues(f)
     .filter(live)
@@ -327,8 +331,9 @@ export default function CollectionView({ collectionId, pages, tagColors, onNavig
   // params so a 50k-row database is filtered in SQLite, not in the browser.
   // Only finished conditions travel. An unfinished one is not "match nothing",
   // it is "not asked yet".
+  const isDateProp = (id: string) => (config?.schema ?? []).some((p) => p.id === id && p.type === 'date');
   const serverFilters = (view0?.filters ?? [])
-    .filter(filterIsArmed)
+    .filter((f) => filterIsArmed(f, isDateProp(f.property)))
     .map((f) => ({ property: f.property, op: f.op, value: f.value, values: f.values, value2: f.value2 }));
   const serverSort = view0?.sort ?? null;
   // The viewer's day travels with every row query, so "today" resolves
@@ -822,7 +827,7 @@ export default function CollectionView({ collectionId, pages, tagColors, onNavig
         'collection-scroll' +
         (view.type === 'board' ? ' is-board' : '') +
         (embed ? ' is-embed' : '') +
-        (embed && (view.filters ?? []).some(filterIsArmed) ? ' is-filtered' : '')
+        (embed && (view.filters ?? []).some((f) => filterIsArmed(f, isDateProp(f.property))) ? ' is-filtered' : '')
       }
     >
       {viewSwitcher}
@@ -1279,7 +1284,7 @@ function DateFilterValue({ value, onChange }: { value: string; onChange: (v: str
           {value !== '' &&
             (resolved ? (
               <div className="fs-hint">{t('Resolves to {date}', { date: formatDay(resolved) })}</div>
-            ) : (
+            ) : isReadableDay(value) ? null : (
               <div className="fs-hint">{t('Unknown relative day. Try today-1M.')}</div>
             ))}
         </>
@@ -1571,7 +1576,12 @@ function FilterSortControls({
                     )}
                   </div>
                 )}
-                {!filterIsArmed(f) && <div className="fs-hint">{t('Not filtering yet. Pick a value.')}</div>}
+                {/* One hint at a time: a date field that is not a day yet
+                    already says so itself (see DateFilterValue). */}
+                {!filterIsArmed(f, isDate) &&
+                  !(isDate && [f.value ?? '', ...(op === 'between' ? [f.value2 ?? ''] : [])].some((v) => v !== '' && !isReadableDay(v))) && (
+                    <div className="fs-hint">{t('Not filtering yet. Pick a value.')}</div>
+                  )}
               </div>
             );
           })}

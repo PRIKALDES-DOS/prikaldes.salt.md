@@ -311,9 +311,13 @@ export function resolveSmartDate(value: string, todayStr?: string): string | nul
   return toDayString(new Date(y, mo, d + off));
 }
 
-/** True when the value is a relative day rather than a plain date. */
-export function isSmartDate(value: string): boolean {
-  return resolveSmartDate(value) !== null;
+/** Can a date condition compare against this value? A calendar day (a time
+ *  may follow it, which is how a timed date is stored) or a relative day that
+ *  resolves. "toda" on the way to "today" or a typo like "yesterdy" cannot:
+ *  compared as text they filtered the table by accident. The server applies
+ *  the same rule (readableDay in server/smartdate.go). */
+export function isReadableDay(value: string): boolean {
+  return /^\d{4}-\d{2}-\d{2}/.test(value) || resolveSmartDate(value) !== null;
 }
 
 // ---- Calendars ----

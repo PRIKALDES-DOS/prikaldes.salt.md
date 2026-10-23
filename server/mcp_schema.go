@@ -438,6 +438,16 @@ func checkViewFilter(f map[string]any, label string, has func(string) bool) (map
 	return entry, nil
 }
 
+// viewFilterRow reads a checked view condition in the shape a query uses. A
+// value that is not text is left out: it cannot be a day either.
+func viewFilterRow(entry map[string]any) rowFilter {
+	var f filterJSON
+	if b, err := json.Marshal(entry); err == nil {
+		_ = json.Unmarshal(b, &f)
+	}
+	return f.rowFilter()
+}
+
 // applyViewSpec validates a spec against the schema and writes it onto a view
 // map. Shared by create and update so the two cannot drift — the whole reason
 // an agent could not configure a view before was that only one of them existed.
@@ -489,11 +499,17 @@ func applyViewSpec(view map[string]any, spec viewSpec, schema []map[string]any) 
 		}
 	}
 	if spec.Filters != nil {
+		dates := dateProps(schema)
 		out := make([]any, 0, len(*spec.Filters))
 		for i, f := range *spec.Filters {
 			entry, err := checkViewFilter(f, fmt.Sprintf("filter %d", i+1), has)
 			if err != nil {
 				return err
+			}
+			if prop, _ := entry["property"].(string); dates[prop] {
+				if v, bad := viewFilterRow(entry).unreadableDay(); bad {
+					return notADay(prop, v)
+				}
 			}
 			out = append(out, entry)
 		}
